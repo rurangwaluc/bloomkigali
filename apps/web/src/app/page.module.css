@@ -1,0 +1,294 @@
+.page {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  overflow-x: hidden;
+  padding: 0 24px;
+  background: var(--background);
+  color: var(--text);
+}
+
+.header,
+.hero,
+.footer {
+  width: min(1120px, 100%);
+  margin-inline: auto;
+}
+
+.header {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.logo {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.brandCopy,
+.brandTop,
+.brandName {
+  display: block;
+}
+
+.brandTop {
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.brandName {
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.hero {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: clamp(64px, 9vh, 96px) 0;
+}
+
+.heroContent {
+  width: min(760px, 100%);
+  text-align: center;
+}
+
+.kicker {
+  margin: 0;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 760px;
+  margin: 18px auto 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(44px, 5.2vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.048em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.heroText {
+  max-width: 580px;
+  margin: 22px auto 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.7;
+  text-wrap: balance;
+}
+
+.signInForm {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+
+.signInButton {
+  display: inline-flex;
+  min-width: 132px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e87517 !important;
+  border-radius: 10px;
+  background-color: #e87517 !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  padding: 0 24px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: none !important;
+  appearance: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.signInButton:hover {
+  border-color: #c45f10 !important;
+  background-color: #c45f10 !important;
+}
+
+.signInButton:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.accessNote {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.footer {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.footer p {
+  margin: 0;
+}
+
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 18px;
+}
+
+.footer a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 0 16px;
+  }
+
+  .header {
+    min-height: 68px;
+  }
+
+  .logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brandTop {
+    font-size: 8px;
+  }
+
+  .brandName {
+    font-size: 14px;
+  }
+
+  .hero {
+    padding: 56px 0;
+  }
+
+  .hero h1 {
+    margin-top: 14px;
+    font-size: clamp(38px, 11.5vw, 52px);
+    line-height: 1;
+  }
+
+  .heroText {
+    max-width: 420px;
+    margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .signInForm {
+    width: 100%;
+    margin-top: 26px;
+  }
+
+  .signInButton {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .accessNote {
+    margin-top: 16px;
+  }
+
+  .footer {
+    min-height: auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 0 22px;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .footer p {
+    width: 100%;
+  }
+
+  .footerLinks {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 390px) {
+  .page {
+    padding: 0 12px;
+  }
+
+  .hero {
+    padding: 48px 0;
+  }
+
+  .hero h1 {
+    font-size: clamp(36px, 12vw, 46px);
+  }
+
+  .brandTop {
+    display: none;
+  }
+}
