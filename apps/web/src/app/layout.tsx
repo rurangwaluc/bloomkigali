@@ -1,5 +1,11 @@
-import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import type {
+  Metadata,
+  Viewport,
+} from 'next';
+import {
+  Cormorant_Garamond,
+  Geist,
+} from 'next/font/google';
 import { PwaManager } from '@/components/pwa-manager';
 import { getDeploymentVersion } from '@/lib/deployment-version';
 import './globals.css';
@@ -9,42 +15,25 @@ const geistSans = Geist({
   subsets: ['latin'],
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const bloomDisplay = Cormorant_Garamond({
+  variable: '--font-bloom-display',
   subsets: ['latin'],
+  weight: ['600', '700'],
 });
 
 export const metadata: Metadata = {
-  title: "Bloom Kigali",
+  title: {
+    default: 'Bloom Kigali',
+    template: '%s | Bloom Kigali',
+  },
   description:
-    "Sales, stock, customers, unpaid sales, expenses, money, and reports for Bloom Kigali.",
+    'Internal business management system for Bloom Kigali.',
   manifest: '/manifest.webmanifest',
-  applicationName: "Bloom Kigali",
+  applicationName: 'Bloom Kigali',
   appleWebApp: {
     capable: true,
-    title: "Bloom Kigali",
+    title: 'Bloom Kigali',
     statusBarStyle: 'default',
-  },
-  icons: {
-    icon: [
-      {
-        url: '/icons/icon-192.png',
-        sizes: '192x192',
-        type: 'image/png',
-      },
-      {
-        url: '/icons/icon-512.png',
-        sizes: '512x512',
-        type: 'image/png',
-      },
-    ],
-    apple: [
-      {
-        url: '/apple-touch-icon.png',
-        sizes: '180x180',
-        type: 'image/png',
-      },
-    ],
   },
 };
 
@@ -52,11 +41,11 @@ export const viewport: Viewport = {
   themeColor: [
     {
       media: '(prefers-color-scheme: light)',
-      color: '#E87517',
+      color: '#F1F1F1',
     },
     {
       media: '(prefers-color-scheme: dark)',
-      color: '#161616',
+      color: '#12130F',
     },
   ],
   width: 'device-width',
@@ -102,7 +91,7 @@ export default function RootLayout({
       </head>
 
       <body
-        className={`${geistSans.variable} ${geistMono.variable}`}
+        className={`${geistSans.variable} ${bloomDisplay.variable}`}
       >
         <PwaManager
           deploymentVersion={deploymentVersion}
