@@ -11,44 +11,51 @@ export default async function SettingsPage() {
   const [
     settings,
     staffUsers,
-  ] =
-    await Promise.all([
-      db.query.businessSettings.findFirst(),
+    ownerRows,
+  ] = await Promise.all([
+    db.query.businessSettings.findFirst(),
 
-      db
-        .select({
-          id: users.id,
-          name: users.name,
-          email:
-            users.email,
-          phone:
-            users.phone,
-          status:
-            users.status,
-        })
-        .from(users)
-        .where(
-          eq(
-            users.role,
-            'EMPLOYEE',
-          ),
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        status: users.status,
+      })
+      .from(users)
+      .where(
+        eq(
+          users.role,
+          'EMPLOYEE',
         ),
-    ]);
+      ),
+
+    db
+      .select({
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+      })
+      .from(users)
+      .where(
+        eq(
+          users.id,
+          owner.id,
+        ),
+      )
+      .limit(1),
+  ]);
+
+  const ownerAccount =
+    ownerRows[0];
 
   const safeSettings = {
     businessName:
-      settings
-        ?.businessName ||
-      "Bloom Kigali",
-
-    ownerName:
-      owner.name ||
-      settings
-        ?.ownerName ||
-      'Owner',
+      settings?.businessName ||
+      'Bloom Kigali',
 
     phone:
-      owner.phone ||
       settings?.phone ||
       '',
 
@@ -57,15 +64,27 @@ export default async function SettingsPage() {
       '',
   };
 
+  const safeOwner = {
+    name:
+      ownerAccount?.name ||
+      owner.name ||
+      'Owner',
+
+    email:
+      ownerAccount?.email ||
+      '',
+
+    phone:
+      ownerAccount?.phone ||
+      '',
+  };
+
   return (
     <section>
       <SettingsWorkspace
-        settings={
-          safeSettings
-        }
-        staffUsers={
-          staffUsers
-        }
+        settings={safeSettings}
+        owner={safeOwner}
+        staffUsers={staffUsers}
       />
     </section>
   );

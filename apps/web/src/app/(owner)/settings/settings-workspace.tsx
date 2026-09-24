@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SettingsForm } from './settings-form';
 import { InstallAppCard } from './install-app-card';
+import { OwnerAccountForm } from './owner-account-form';
 import { PasswordForm } from './password-form';
 import { StaffAccessForm } from './staff-access-form';
 
@@ -15,10 +16,16 @@ type SettingsSection =
 type SettingsWorkspaceProps = {
   settings: {
     businessName: string;
-    ownerName: string;
     phone: string;
     address: string;
   };
+
+  owner: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+
   staffUsers: Array<{
     id: string;
     name: string;
@@ -54,6 +61,7 @@ const sections: Array<{
 
 export function SettingsWorkspace({
   settings,
+  owner,
   staffUsers,
 }: SettingsWorkspaceProps) {
   const [
@@ -79,9 +87,7 @@ export function SettingsWorkspace({
 
               return (
                 <button
-                  key={
-                    section.value
-                  }
+                  key={section.value}
                   type="button"
                   onClick={() =>
                     setActiveSection(
@@ -99,9 +105,7 @@ export function SettingsWorkspace({
                       : 'border-b-2 border-transparent px-4 py-3 text-sm font-bold text-[#6B7280] transition hover:text-[#222222] dark:text-[#A3A3A3] dark:hover:text-[#F5F5F5]'
                   }
                 >
-                  {
-                    section.label
-                  }
+                  {section.label}
                 </button>
               );
             },
@@ -109,27 +113,21 @@ export function SettingsWorkspace({
         </div>
       </nav>
 
-      <div className="mx-auto w-full max-w-[780px] pt-5 pb-7 sm:pt-6 sm:pb-8">
+      <div className="mx-auto w-full max-w-[780px] pb-8 pt-6">
         {activeSection ===
           'business' && (
           <section>
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
-              Business
-            </p>
-
-            <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[#222222] dark:text-[#F5F5F5]">
+<h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[#222222] dark:text-[#F5F5F5]">
               Business details
             </h2>
 
             <p className="mt-1 text-sm font-semibold leading-6 text-[#6B7280] dark:text-[#A3A3A3]">
-              Details used across the boutique and owner account.
+              Core information used across Bloom Kigali.
             </p>
 
             <div className="mt-6">
               <SettingsForm
-                settings={
-                  settings
-                }
+                settings={settings}
               />
             </div>
           </section>
@@ -142,15 +140,21 @@ export function SettingsWorkspace({
 
         {activeSection ===
           'security' && (
-          <PasswordForm />
+          <div className="space-y-8">
+            <OwnerAccountForm
+              owner={owner}
+            />
+
+            <div className="border-t border-neutral-200 pt-7 dark:border-[#343434]">
+              <PasswordForm />
+            </div>
+          </div>
         )}
 
         {activeSection ===
           'staff' && (
           <StaffAccessForm
-            staffUsers={
-              staffUsers
-            }
+            staffUsers={staffUsers}
           />
         )}
       </div>

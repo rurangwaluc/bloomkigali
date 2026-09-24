@@ -19,16 +19,12 @@ export function PasswordForm() {
   return (
     <section className="w-full">
       <div className="max-w-5xl">
-        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
-          Security
-        </p>
-
-        <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[#222222] dark:text-[#F5F5F5]">
-          Owner password
+        <h2 className="font-display text-xl font-black tracking-tight text-[#222222] dark:text-[#F5F5F5]">
+          Password
         </h2>
 
         <p className="mt-1 text-sm font-semibold leading-6 text-[#6B7280] dark:text-[#A3A3A3]">
-          Change the password used to sign in as the owner.
+          Change the password used to sign in to the owner account.
         </p>
 
         <form
@@ -117,7 +113,7 @@ export function PasswordForm() {
               disabled={
                 pending
               }
-              className="h-11 w-full rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+              className="h-11 w-full rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-[#17150F] transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
             >
               {pending
                 ? 'Changing...'

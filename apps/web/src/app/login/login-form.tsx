@@ -21,9 +21,9 @@ export function LoginForm() {
   return (
     <form
       action={action}
-      className="space-y-5"
+      className="space-y-4 sm:space-y-5"
     >
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         <label
           htmlFor="email"
           className="text-xs font-bold text-[var(--text)]"
@@ -38,11 +38,11 @@ export function LoginForm() {
           autoComplete="email"
           required
           placeholder="bloomkigali@gmail.com"
-          className="h-12 w-full rounded-[4px] border border-[var(--border-strong)] bg-[var(--background)] px-4 text-sm font-medium text-[var(--text)] outline-none transition placeholder:font-normal placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+          className="h-11 w-full rounded-[4px] border border-[var(--border-strong)] bg-[var(--background)] px-4 text-sm sm:h-12 font-medium text-[var(--text)] outline-none transition placeholder:font-normal placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         <label
           htmlFor="password"
           className="text-xs font-bold text-[var(--text)]"
@@ -62,7 +62,7 @@ export function LoginForm() {
             autoComplete="current-password"
             required
             placeholder="Enter your password"
-            className="h-12 w-full rounded-[4px] border border-[var(--border-strong)] bg-[var(--background)] px-4 pr-12 text-sm font-medium text-[var(--text)] outline-none transition placeholder:font-normal placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            className="h-11 w-full rounded-[4px] border border-[var(--border-strong)] bg-[var(--background)] px-4 pr-12 text-sm sm:h-12 font-medium text-[var(--text)] outline-none transition placeholder:font-normal placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
           />
 
           <button
@@ -111,7 +111,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] border border-[var(--primary)] bg-[var(--primary)] px-5 text-sm font-bold text-[#17150F] transition hover:border-[var(--primary-strong)] hover:bg-[var(--primary-strong)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--primary)] disabled:cursor-wait disabled:opacity-70"
+        className="flex h-11 w-full items-center sm:h-12 justify-center gap-2 rounded-[4px] border border-[var(--primary)] bg-[var(--primary)] px-5 text-sm font-bold text-[#17150F] transition hover:border-[var(--primary-strong)] hover:bg-[var(--primary-strong)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--primary)] disabled:cursor-wait disabled:opacity-70"
       >
         {pending ? (
           <>

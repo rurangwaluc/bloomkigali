@@ -117,6 +117,7 @@ export const products = pgTable('products', {
   quantity: integer('quantity').notNull().default(0),
   minQuantity: integer('min_quantity').notNull().default(5),
   expiryDate: date('expiry_date'),
+  imageKey: text('image_key'),
   notes: text('notes'),
   status: productStatusEnum('status').notNull().default('ACTIVE'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

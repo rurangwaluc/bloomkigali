@@ -130,7 +130,7 @@ export function AppSidebar({
 
   const content = (
     <>
-      <div className="border-b border-[var(--border)] px-5 pb-5 pt-6">
+      <div className="border-b border-[var(--border)] px-4 pb-4 pt-4">
         <Link
           href="/dashboard"
           className="block no-underline"
@@ -138,23 +138,24 @@ export function AppSidebar({
           <Image
             src="/brand/bloom-logo-horizontal.png"
             alt="Bloom Kigali"
-            width={176}
-            height={60}
-            className="h-auto w-[176px] object-contain"
+            width={145}
+            height={49}
+            className="w-[145px] object-contain"
+        style={{ height: 'auto' }}
             priority
           />
 
-          <p className="mt-2 text-[9px] font-semibold leading-4 text-[var(--muted)]">
+          <p className="mt-1 text-[8px] font-semibold leading-3.5 text-[var(--muted)]">
             Beautiful flowers. Brighter moments.
           </p>
         </Link>
       </div>
 
       <nav
-        className="flex-1 overflow-y-auto px-2.5 py-5"
+        className="flex-1 overflow-y-auto px-2.5 py-3 lg:flex lg:overflow-hidden lg:py-3"
         aria-label="Main navigation"
       >
-        <div className="space-y-1.5">
+        <div className="space-y-1 lg:flex lg:h-full lg:w-full lg:flex-col lg:justify-between lg:space-y-0">
           {visibleNavigation.map((item) => {
             const Icon = item.icon;
 
@@ -168,6 +169,7 @@ export function AppSidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 onClick={() => setMobileOpen(false)}
                 aria-current={
                   active
@@ -176,12 +178,12 @@ export function AppSidebar({
                 }
                 className={
                   active
-                    ? 'flex min-h-12 items-center gap-3 rounded-[6px] bg-[var(--primary)] px-4 text-[13px] font-bold text-[#17150F] no-underline'
-                    : 'flex min-h-12 items-center gap-3 rounded-[6px] px-4 text-[13px] font-semibold text-[var(--text)] no-underline transition hover:bg-[var(--surface)]'
+                    ? 'flex min-h-11 items-center gap-3 rounded-[6px] bg-[var(--primary)] px-4 text-[13px] font-bold text-[#17150F] no-underline lg:min-h-[40px] lg:px-3.5 lg:text-[13px]'
+                    : 'flex min-h-11 items-center gap-3 rounded-[6px] px-4 text-[13px] font-semibold text-[var(--text)] no-underline transition hover:bg-[var(--surface)] lg:min-h-[40px] lg:px-3.5 lg:text-[13px]'
                 }
               >
                 <Icon
-                  className="h-[19px] w-[19px] shrink-0"
+                  className="h-[19px] w-[19px] shrink-0 lg:h-[18px] lg:w-[18px]"
                   strokeWidth={1.8}
                   aria-hidden="true"
                 />
@@ -195,22 +197,40 @@ export function AppSidebar({
         </div>
       </nav>
 
-      <div className="px-5 pb-4">
-        <div className="border-t border-[var(--border)] pt-4">
-          <p className="shop-display text-[19px] font-semibold leading-[1.06] tracking-[-0.035em] text-[var(--text)]">
-            Fresh flowers.
-            <br />
-            Brighter days.
-          </p>
+      <div className="px-0 pb-0">
+        <div
+          className="relative h-[115px] overflow-hidden border-t border-[var(--border)] bg-[#f4f1ea]"
+          style={{
+            backgroundImage:
+              "url('/brand/sidebar-flowers-final.jpg')",
+            backgroundSize:
+              'cover',
+            backgroundPosition:
+              '72% center',
+            backgroundRepeat:
+              'no-repeat',
+          }}
+        >
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(90deg, rgba(244,241,234,0.82) 0%, rgba(244,241,234,0.60) 40%, rgba(244,241,234,0.10) 68%, transparent 100%)',
+            }}
+            aria-hidden="true"
+          />
 
-          <div className="mt-3 h-[2px] w-7 bg-[var(--primary)]" />
+          <div className="relative z-[1] h-[115px] px-4 py-3">
+            <p className="shop-display max-w-[112px] text-[14px] font-semibold leading-[1.05] tracking-[-0.015em] text-[#171814]">
+              Fresh
+              <br />
+              Flowers
+              <br />
+              Brighter Days
+            </p>
 
-          <p className="mt-3 text-[9px] font-medium leading-4 text-[var(--muted)]">
-            Bloom Kigali
-            <br />
-            Kigali, Rwanda
-          </p>
-
+            <div className="mt-2.5 h-[2px] w-8 bg-[#BF9A2F]" />
+          </div>
         </div>
       </div>
     </>
@@ -233,7 +253,7 @@ export function AppSidebar({
         />
       </button>
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col border-r border-[var(--border)] bg-[var(--card)] lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col overflow-hidden border-r border-[var(--border)] bg-[var(--card)] lg:flex">
         {content}
       </aside>
 

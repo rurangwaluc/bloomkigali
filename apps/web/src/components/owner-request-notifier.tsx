@@ -177,7 +177,7 @@ export function OwnerRequestNotifier({
         () => {
           void refresh();
         },
-        15_000,
+        60_000,
       );
 
     function handleFocus() {

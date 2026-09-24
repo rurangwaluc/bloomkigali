@@ -183,6 +183,13 @@
       "when": 1787915414562,
       "tag": "0025_woozy_firedrake",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790245171633,
+      "tag": "0026_ancient_living_mummy",
+      "breakpoints": true
     }
   ]
 }
