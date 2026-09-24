@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bloom-kigali-static-v3';
+const CACHE_NAME = 'bloom-kigali-static-v4';
 const OFFLINE_URL = '/offline';
 
 const IS_LOCAL_DEVELOPMENT =

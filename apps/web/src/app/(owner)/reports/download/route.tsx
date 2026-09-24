@@ -459,7 +459,7 @@ function ReportPdf({
               styles.eyebrow
             }
           >
-            Mama&apos;s Pride
+            Bloom Kigali
             Boutique
           </Text>
 
@@ -849,7 +849,7 @@ function ReportPdf({
           Generated{' '}
           {generatedAt} /
           Africa/Kigali /
-          Mama&apos;s Pride
+          Bloom Kigali
           Boutique
         </Text>
       </Page>
