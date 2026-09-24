@@ -9,6 +9,7 @@ import {
   users,
 } from '@bloom-kigali/db/schema';
 import { AppHeader } from '@/components/app-header';
+import { AppSidebar } from '@/components/app-sidebar';
 import { requireUser } from '@/lib/auth/session';
 
 function getKigaliGreeting() {
@@ -107,21 +108,31 @@ export default async function OwnerLayout({
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-3 py-3 text-[var(--text)] sm:px-5 sm:py-5 lg:px-8">
-      <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-5">
-        <AppHeader
-          userName={user.name}
-          userRole={user.role}
-          dashboardGreeting={getKigaliGreeting()}
-          pendingRequestCount={
-            pendingRequestCount
-          }
-          latestRequest={
-            latestRequest
-          }
-        />
+    <main className="min-h-screen bg-[var(--background)] text-[var(--text)]">
+      <AppSidebar
+        userRole={user.role}
+      />
 
-        {children}
+      <div className="min-h-screen lg:pl-[220px]">
+        <div className="w-full px-3 py-3 sm:px-5 sm:py-5 lg:px-7 xl:px-8">
+          <div className="mx-auto w-full max-w-[1540px] space-y-4 sm:space-y-5">
+            <AppHeader
+              userName={user.name}
+              userRole={user.role}
+              dashboardGreeting={
+                getKigaliGreeting()
+              }
+              pendingRequestCount={
+                pendingRequestCount
+              }
+              latestRequest={
+                latestRequest
+              }
+            />
+
+            {children}
+          </div>
+        </div>
       </div>
     </main>
   );

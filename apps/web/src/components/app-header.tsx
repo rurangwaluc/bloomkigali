@@ -3,7 +3,6 @@
 import { LogOut } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '@/lib/auth/actions';
-import { ModuleMenu } from './module-menu';
 import {
   OwnerRequestNotifier,
   type RequestNotification,
@@ -161,11 +160,7 @@ export function AppHeader({
   return (
     <header className="border-b border-[var(--border)] px-0 pb-4 pt-1">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-black text-white">
-            MP
-          </div>
-
+        <div className="flex min-w-0 items-center gap-3 pl-12 lg:pl-0">
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
               {page.eyebrow}
@@ -182,13 +177,6 @@ export function AppHeader({
         </div>
 
         <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
-          <ModuleMenu
-            userRole={userRole}
-            initialPendingRequestCount={
-              pendingRequestCount
-            }
-          />
-
           <div className="flex items-center gap-2">
             <ThemeToggle />
 

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { PublicThemeToggle } from './public-theme-toggle';
 import styles from './page.module.css';
@@ -46,7 +47,14 @@ export default function HomePage() {
           className={styles.brand}
           aria-label="Bloom Kigali home"
         >
-          Bloom Kigali
+          <Image
+            src="/brand/bloom-logo-horizontal.png"
+            alt="Bloom Kigali"
+            width={210}
+            height={72}
+            className={styles.brandLogo}
+            priority
+          />
         </Link>
 
         <div className={styles.headerActions}>

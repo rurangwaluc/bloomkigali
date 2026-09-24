@@ -19,7 +19,7 @@
 }
 
 :global(.dark) .page {
-  --bk-gold: #D1AE4E;
+  --bk-gold: #BF9A2F;
   --bk-gold-strong: #DFC16A;
   --bk-gold-soft: #29261B;
   --bk-bg: #11130F;
@@ -47,13 +47,16 @@
 }
 
 .brand {
-  color: var(--bk-gold);
-  font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(26px, 2vw, 30px);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
+}
+
+.brandLogo {
+  display: block;
+  width: 205px;
+  height: auto;
+  object-fit: contain;
 }
 
 .headerActions {
@@ -309,8 +312,8 @@
     min-height: 68px;
   }
 
-  .brand {
-    font-size: 24px;
+  .brandLogo {
+    width: 160px;
   }
 
   .headerSignIn {
