@@ -53,6 +53,11 @@ export const cashDrawerDifferenceTypeEnum = pgEnum('cash_drawer_difference_type'
 ]);
 
 
+export const offlineOperationStatusEnum = pgEnum(
+  'offline_operation_status',
+  ['PROCESSING', 'COMPLETED'],
+);
+
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 120 }).notNull(),
@@ -74,6 +79,61 @@ export const sessions = pgTable('sessions', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const offlineOperations = pgTable(
+  'offline_operations',
+  {
+    operationId: uuid('operation_id').primaryKey(),
+
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'restrict',
+      }),
+
+    kind: varchar('kind', {
+      length: 80,
+    }).notNull(),
+
+    payloadHash: varchar('payload_hash', {
+      length: 64,
+    }).notNull(),
+
+    status: offlineOperationStatusEnum(
+      'status',
+    )
+      .notNull()
+      .default('PROCESSING'),
+
+    result: jsonb('result'),
+
+    clientCreatedAt: timestamp(
+      'client_created_at',
+      {
+        withTimezone: true,
+      },
+    ).notNull(),
+
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+
+    updatedAt: timestamp('updated_at', {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+
+    completedAt: timestamp(
+      'completed_at',
+      {
+        withTimezone: true,
+      },
+    ),
+  },
+);
 
 export const businessSettings = pgTable('business_settings', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -603,6 +663,12 @@ export type NewUser = typeof users.$inferInsert;
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+export type OfflineOperation =
+  typeof offlineOperations.$inferSelect;
+
+export type NewOfflineOperation =
+  typeof offlineOperations.$inferInsert;
 
 export type BusinessSettings = typeof businessSettings.$inferSelect;
 export type NewBusinessSettings = typeof businessSettings.$inferInsert;

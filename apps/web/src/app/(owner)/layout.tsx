@@ -10,6 +10,7 @@ import {
 } from '@bloom-kigali/db/schema';
 import { AppHeader } from '@/components/app-header';
 import { AppSidebar } from '@/components/app-sidebar';
+import { OfflineSyncManager } from '@/components/offline-sync-manager';
 import { requireUser } from '@/lib/auth/session';
 
 function getKigaliGreeting() {
@@ -111,6 +112,10 @@ export default async function OwnerLayout({
     <main className="min-h-screen bg-[var(--background)] text-[var(--text)]">
       <AppSidebar
         userRole={user.role}
+      />
+
+      <OfflineSyncManager
+        userId={user.id}
       />
 
       <div className="min-h-screen lg:pl-[220px]">

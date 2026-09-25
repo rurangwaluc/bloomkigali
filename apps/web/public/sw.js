@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bloom-kigali-static-v4';
+const CACHE_NAME = 'bloom-kigali-static-v5';
 const OFFLINE_URL = '/offline';
 
 const IS_LOCAL_DEVELOPMENT =
@@ -14,6 +14,8 @@ const STATIC_ASSETS = [
   '/icons/icon-maskable-512.png',
   '/apple-touch-icon.png',
   '/favicon.ico',
+  '/brand/bloom-logo-horizontal.png',
+  '/brand/bloom-logo-circle.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -100,6 +102,7 @@ self.addEventListener('fetch', (event) => {
 
   const isSafeStaticAsset =
     url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/brand/') ||
     url.pathname ===
       '/apple-touch-icon.png' ||
     url.pathname === '/favicon.ico' ||

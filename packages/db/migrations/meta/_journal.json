@@ -190,6 +190,13 @@
       "when": 1790245171633,
       "tag": "0026_ancient_living_mummy",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790272435133,
+      "tag": "0027_unique_wallflower",
+      "breakpoints": true
     }
   ]
 }
