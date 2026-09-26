@@ -22,6 +22,12 @@ import {
   ProductSyncError,
 } from '@/lib/products/sync-server';
 
+import {
+  executeStockDamageSync,
+  executeStockReceiveSync,
+  StockSyncError,
+} from '@/lib/stock/sync-server';
+
 export const runtime =
   'nodejs';
 
@@ -235,6 +241,84 @@ export async function POST(
       });
     }
 
+    if (
+      body.kind ===
+      'STOCK_RECEIVE'
+    ) {
+      const execution =
+        await runIdempotentOfflineOperation({
+          operationId:
+            body.operationId,
+
+          userId:
+            user.id,
+
+          kind:
+            body.kind,
+
+          payload:
+            body.payload,
+
+          clientCreatedAt,
+
+          execute:
+            async (tx) =>
+              executeStockReceiveSync(
+                tx,
+                user,
+                body.payload,
+                clientCreatedAt,
+              ),
+        });
+
+      return NextResponse.json({
+        ok: true,
+        replayed:
+          execution.replayed,
+        result:
+          execution.result,
+      });
+    }
+
+    if (
+      body.kind ===
+      'STOCK_DAMAGE'
+    ) {
+      const execution =
+        await runIdempotentOfflineOperation({
+          operationId:
+            body.operationId,
+
+          userId:
+            user.id,
+
+          kind:
+            body.kind,
+
+          payload:
+            body.payload,
+
+          clientCreatedAt,
+
+          execute:
+            async (tx) =>
+              executeStockDamageSync(
+                tx,
+                user,
+                body.payload,
+                clientCreatedAt,
+              ),
+        });
+
+      return NextResponse.json({
+        ok: true,
+        replayed:
+          execution.replayed,
+        result:
+          execution.result,
+      });
+    }
+
     return errorResponse(
       'Offline sync for this action is not enabled yet.',
       422,
@@ -242,7 +326,9 @@ export async function POST(
   } catch (error) {
     if (
       error instanceof
-      ProductSyncError
+        ProductSyncError ||
+      error instanceof
+        StockSyncError
     ) {
       return errorResponse(
         error.message,

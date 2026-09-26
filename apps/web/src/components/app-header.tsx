@@ -106,6 +106,24 @@ function getPageName(pathname: string) {
     };
   }
 
+  if (
+    pathname.startsWith(
+      '/stock/history/',
+    )
+  ) {
+    return {
+      eyebrow: 'Stock',
+      title: 'Stock history',
+    };
+  }
+
+  if (pathname === '/stock/damage') {
+    return {
+      eyebrow: 'Stock',
+      title: 'Record damage',
+    };
+  }
+
   if (pathname === '/stock') {
     return {
       eyebrow: 'Stock',
@@ -297,7 +315,8 @@ export function AppHeader({
 
       {!onDashboard ? (
         <div className="pb-1 pl-12 pt-4 sm:pt-5 lg:pl-0">
-          {page.title !== 'Settings' ? (
+          {page.title !== 'Settings' &&
+          pathname !== '/stock' ? (
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
               {page.eyebrow}
             </p>

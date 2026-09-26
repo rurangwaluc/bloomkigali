@@ -3,19 +3,29 @@
 import {
   and,
   eq,
-  gt,
-  ne,
+  sql,
 } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { db } from '@bloom-kigali/db/client';
+
+import {
+  revalidatePath,
+} from 'next/cache';
+
+import {
+  redirect,
+} from 'next/navigation';
+
+import {
+  db,
+} from '@bloom-kigali/db/client';
+
 import {
   corrections,
   products,
   saleItems,
-  sales,
   stockArrivals,
+  stockDamages,
 } from '@bloom-kigali/db/schema';
+
 import {
   requireOwner,
   requireUser,
@@ -23,31 +33,57 @@ import {
 
 type StockFixValues = {
   quantityReceived: number;
-  buyingPrice: number;
   supplierName: string | null;
+  reference: string | null;
+  notes: string | null;
 };
 
 type DbTransaction =
   Parameters<
-    Parameters<typeof db.transaction>[0]
+    Parameters<
+      typeof db.transaction
+    >[0]
   >[0];
 
-class StockFixError extends Error {}
+class StockFixError
+  extends Error {}
 
-function cleanOptional(value: FormDataEntryValue | null) {
-  const cleaned = String(value || '').trim();
-  return cleaned || null;
+function cleanOptional(
+  value:
+    | FormDataEntryValue
+    | null,
+  maxLength: number,
+) {
+  const cleaned =
+    String(
+      value || '',
+    ).trim();
+
+  if (!cleaned) {
+    return null;
+  }
+
+  return cleaned.slice(
+    0,
+    maxLength,
+  );
 }
 
 function fixErrorHref(
   receiptId: string,
   message: string,
 ) {
-  return `/stock/received/${receiptId}/fix?error=${encodeURIComponent(message)}`;
+  return `/stock/received/${receiptId}/fix?error=${encodeURIComponent(
+    message,
+  )}`;
 }
 
-function requestsErrorHref(message: string) {
-  return `/requests?error=${encodeURIComponent(message)}`;
+function requestsErrorHref(
+  message: string,
+) {
+  return `/requests?error=${encodeURIComponent(
+    message,
+  )}`;
 }
 
 function parseFormValues(
@@ -60,28 +96,19 @@ function parseFormValues(
   | {
       error: string;
     } {
-  const quantityReceived = Number(
-    String(
-      formData.get('quantityReceived') || '',
-    ).trim(),
-  );
-
-  const buyingPrice = Number(
-    String(
-      formData.get('buyingPrice') || '',
-    ).trim(),
-  );
-
-  const supplierName = cleanOptional(
-    formData.get('supplierName'),
-  );
-
-  const reason = String(
-    formData.get('reason') || '',
-  ).trim();
+  const quantityReceived =
+    Number(
+      String(
+        formData.get(
+          'quantityReceived',
+        ) || '',
+      ).trim(),
+    );
 
   if (
-    !Number.isInteger(quantityReceived) ||
+    !Number.isInteger(
+      quantityReceived,
+    ) ||
     quantityReceived < 0
   ) {
     return {
@@ -90,65 +117,162 @@ function parseFormValues(
     };
   }
 
+  const supplierName =
+    cleanOptional(
+      formData.get(
+        'supplierName',
+      ),
+      160,
+    );
+
+  const reference =
+    cleanOptional(
+      formData.get(
+        'reference',
+      ),
+      120,
+    );
+
+  const notes =
+    cleanOptional(
+      formData.get(
+        'notes',
+      ),
+      1000,
+    );
+
+  const reason =
+    String(
+      formData.get(
+        'reason',
+      ) || '',
+    ).trim();
+
   if (
-    !Number.isFinite(buyingPrice) ||
-    buyingPrice <= 0
+    reason.length < 3
   ) {
     return {
       error:
-        'Enter a valid buying price.',
+        'Explain why this receipt needs to be corrected.',
     };
   }
 
-  if (reason.length < 3) {
+  if (
+    reason.length > 1000
+  ) {
     return {
       error:
-        'Tell us what was entered wrong.',
+        'Correction reason is too long.',
     };
   }
 
   return {
     values: {
       quantityReceived,
-      buyingPrice,
       supplierName,
+      reference,
+      notes,
     },
+
     reason,
   };
 }
 
 function snapshotToValues(
-  value: Record<string, unknown>,
+  snapshot: unknown,
 ): StockFixValues {
-  const quantityReceived = Number(
-    value.quantityReceived,
-  );
-
-  const buyingPrice = Number(
-    value.buyingPrice,
-  );
-
-  const supplierName =
-    typeof value.supplierName === 'string' &&
-    value.supplierName.trim()
-      ? value.supplierName.trim()
-      : null;
-
   if (
-    !Number.isInteger(quantityReceived) ||
-    quantityReceived < 0 ||
-    !Number.isFinite(buyingPrice) ||
-    buyingPrice <= 0
+    !snapshot ||
+    typeof snapshot !==
+      'object' ||
+    Array.isArray(snapshot)
   ) {
     throw new StockFixError(
-      'This request has invalid stock details.',
+      'This correction request contains invalid stock information.',
     );
+  }
+
+  const record =
+    snapshot as Record<
+      string,
+      unknown
+    >;
+
+  const quantityReceived =
+    Number(
+      record.quantityReceived,
+    );
+
+  if (
+    !Number.isInteger(
+      quantityReceived,
+    ) ||
+    quantityReceived < 0
+  ) {
+    throw new StockFixError(
+      'This correction request contains an invalid quantity.',
+    );
+  }
+
+  function nullableText(
+    value: unknown,
+    maxLength: number,
+  ) {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return null;
+    }
+
+    if (
+      typeof value !==
+      'string'
+    ) {
+      throw new StockFixError(
+        'This correction request contains invalid stock information.',
+      );
+    }
+
+    const cleaned =
+      value.trim();
+
+    if (!cleaned) {
+      return null;
+    }
+
+    if (
+      cleaned.length >
+      maxLength
+    ) {
+      throw new StockFixError(
+        'This correction request contains invalid stock information.',
+      );
+    }
+
+    return cleaned;
   }
 
   return {
     quantityReceived,
-    buyingPrice,
-    supplierName,
+
+    supplierName:
+      nullableText(
+        record.supplierName,
+        160,
+      ),
+
+    reference:
+      nullableText(
+        record.reference,
+        120,
+      ),
+
+    notes:
+      nullableText(
+        record.notes,
+        1000,
+      ),
   };
 }
 
@@ -159,212 +283,335 @@ function sameValues(
   return (
     first.quantityReceived ===
       second.quantityReceived &&
-    first.buyingPrice ===
-      second.buyingPrice &&
     first.supplierName ===
-      second.supplierName
+      second.supplierName &&
+    first.reference ===
+      second.reference &&
+    first.notes ===
+      second.notes
   );
+}
+
+async function getCurrentReceipt(
+  receiptId: string,
+) {
+  const [receipt] =
+    await db
+      .select({
+        id:
+          stockArrivals.id,
+
+        productId:
+          stockArrivals.productId,
+
+        productName:
+          stockArrivals.productName,
+
+        quantityReceived:
+          stockArrivals.quantityReceived,
+
+        supplierName:
+          stockArrivals.supplierName,
+
+        reference:
+          stockArrivals.reference,
+
+        notes:
+          stockArrivals.notes,
+      })
+      .from(stockArrivals)
+      .where(
+        eq(
+          stockArrivals.id,
+          receiptId,
+        ),
+      )
+      .limit(1);
+
+  return receipt || null;
+}
+
+function receiptValues(
+  receipt: {
+    quantityReceived: number;
+    supplierName:
+      | string
+      | null;
+    reference:
+      | string
+      | null;
+    notes:
+      | string
+      | null;
+  },
+): StockFixValues {
+  return {
+    quantityReceived:
+      receipt.quantityReceived,
+
+    supplierName:
+      receipt.supplierName
+        ?.trim() || null,
+
+    reference:
+      receipt.reference
+        ?.trim() || null,
+
+    notes:
+      receipt.notes
+        ?.trim() || null,
+  };
+}
+
+async function reconcileProductStock(
+  tx: DbTransaction,
+  productId: string,
+) {
+  const [
+    importedResult,
+    soldResult,
+    damagedResult,
+  ] = await Promise.all([
+    tx
+      .select({
+        value:
+          sql<string>`
+            COALESCE(
+              SUM(
+                ${stockArrivals.quantityReceived}
+              ),
+              0
+            )
+          `,
+      })
+      .from(stockArrivals)
+      .where(
+        eq(
+          stockArrivals.productId,
+          productId,
+        ),
+      ),
+
+    tx
+      .select({
+        value:
+          sql<string>`
+            COALESCE(
+              SUM(
+                ${saleItems.quantity}
+              ),
+              0
+            )
+          `,
+      })
+      .from(saleItems)
+      .where(
+        eq(
+          saleItems.productId,
+          productId,
+        ),
+      ),
+
+    tx
+      .select({
+        value:
+          sql<string>`
+            COALESCE(
+              SUM(
+                ${stockDamages.quantityDamaged}
+              ),
+              0
+            )
+          `,
+      })
+      .from(stockDamages)
+      .where(
+        eq(
+          stockDamages.productId,
+          productId,
+        ),
+      ),
+  ]);
+
+  const imported =
+    Number(
+      importedResult[0]
+        ?.value || 0,
+    );
+
+  const sold =
+    Number(
+      soldResult[0]
+        ?.value || 0,
+    );
+
+  const damaged =
+    Number(
+      damagedResult[0]
+        ?.value || 0,
+    );
+
+  const remaining =
+    imported -
+    sold -
+    damaged;
+
+  if (remaining < 0) {
+    throw new StockFixError(
+      'This correction would reduce imported stock below quantities already sold or damaged.',
+    );
+  }
+
+  await tx
+    .update(products)
+    .set({
+      quantity:
+        remaining,
+
+      updatedAt:
+        new Date(),
+    })
+    .where(
+      eq(
+        products.id,
+        productId,
+      ),
+    );
+
+  return remaining;
 }
 
 async function applyStockReceiptFix(
   tx: DbTransaction,
   receiptId: string,
-  expectedBefore: StockFixValues,
+  expectedBefore:
+    StockFixValues,
   after: StockFixValues,
 ) {
-  const [receipt] = await tx
-    .select({
-      id: stockArrivals.id,
-      productId: stockArrivals.productId,
-      productName:
-        stockArrivals.productName,
-      quantityReceived:
-        stockArrivals.quantityReceived,
-      buyingPrice:
-        stockArrivals.buyingPrice,
-      supplierName:
-        stockArrivals.supplierName,
-      arrivedAt:
-        stockArrivals.arrivedAt,
+  const [initialReceipt] =
+    await tx
+      .select({
+        productId:
+          stockArrivals.productId,
+      })
+      .from(stockArrivals)
+      .where(
+        eq(
+          stockArrivals.id,
+          receiptId,
+        ),
+      )
+      .limit(1);
 
-      currentQuantity:
-        products.quantity,
-      currentBuyingPrice:
-        products.buyingPrice,
-      currentSupplierName:
-        products.supplierName,
-    })
-    .from(stockArrivals)
-    .innerJoin(
-      products,
-      eq(
-        stockArrivals.productId,
-        products.id,
-      ),
-    )
-    .where(
-      eq(stockArrivals.id, receiptId),
-    )
-    .limit(1);
+  if (!initialReceipt) {
+    throw new StockFixError(
+      'This stock receipt was not found.',
+    );
+  }
+
+  /*
+   * Every stock-changing workflow locks the
+   * product before reconciling current stock.
+   */
+  await tx.execute(sql`
+    SELECT id
+    FROM products
+    WHERE id =
+      ${initialReceipt.productId}
+    FOR UPDATE
+  `);
+
+  await tx.execute(sql`
+    SELECT id
+    FROM stock_arrivals
+    WHERE id =
+      ${receiptId}
+    FOR UPDATE
+  `);
+
+  const [receipt] =
+    await tx
+      .select({
+        id:
+          stockArrivals.id,
+
+        productId:
+          stockArrivals.productId,
+
+        productName:
+          stockArrivals.productName,
+
+        quantityReceived:
+          stockArrivals.quantityReceived,
+
+        supplierName:
+          stockArrivals.supplierName,
+
+        reference:
+          stockArrivals.reference,
+
+        notes:
+          stockArrivals.notes,
+      })
+      .from(stockArrivals)
+      .where(
+        eq(
+          stockArrivals.id,
+          receiptId,
+        ),
+      )
+      .limit(1);
 
   if (!receipt) {
     throw new StockFixError(
-      'This stock entry was not found.',
+      'This stock receipt was not found.',
     );
   }
 
-  const before: StockFixValues = {
-    quantityReceived:
-      receipt.quantityReceived,
-    buyingPrice: Number(
-      receipt.buyingPrice,
-    ),
-    supplierName:
-      receipt.supplierName?.trim() ||
-      null,
-  };
+  const before =
+    receiptValues(receipt);
 
-  if (!sameValues(before, expectedBefore)) {
+  if (
+    !sameValues(
+      before,
+      expectedBefore,
+    )
+  ) {
     throw new StockFixError(
-      'This stock entry has already changed. Open it again before making another fix.',
+      'This stock receipt has already changed. Open it again before making another correction.',
     );
   }
 
-  if (sameValues(before, after)) {
+  if (
+    sameValues(
+      before,
+      after,
+    )
+  ) {
     throw new StockFixError(
       'Nothing was changed.',
     );
   }
 
   /*
-   * A saved receipt can safely be rewritten only
-   * while nothing later has used that product.
-   *
-   * This protects stock totals and buying-cost
-   * calculations from silent historical damage.
+   * sellingPriceSnapshot intentionally stays
+   * unchanged. It records the selling price
+   * captured when this receipt was created.
    */
-  const [
-    laterArrival,
-    laterSale,
-  ] = await Promise.all([
-    tx
-      .select({
-        id: stockArrivals.id,
-      })
-      .from(stockArrivals)
-      .where(
-        and(
-          eq(
-            stockArrivals.productId,
-            receipt.productId,
-          ),
-          ne(
-            stockArrivals.id,
-            receipt.id,
-          ),
-          gt(
-            stockArrivals.arrivedAt,
-            receipt.arrivedAt,
-          ),
-        ),
-      )
-      .limit(1),
-
-    tx
-      .select({
-        id: saleItems.id,
-      })
-      .from(saleItems)
-      .innerJoin(
-        sales,
-        eq(
-          saleItems.saleId,
-          sales.id,
-        ),
-      )
-      .where(
-        and(
-          eq(
-            saleItems.productId,
-            receipt.productId,
-          ),
-          gt(
-            sales.saleDate,
-            receipt.arrivedAt,
-          ),
-        ),
-      )
-      .limit(1),
-  ]);
-
-  if (
-    laterArrival.length > 0 ||
-    laterSale.length > 0
-  ) {
-    throw new StockFixError(
-      'This stock entry has already been followed by more stock or sales, so it cannot be safely changed here.',
-    );
-  }
-
-  const currentQuantity =
-    receipt.currentQuantity;
-
-  const currentBuyingPrice =
-    Number(
-      receipt.currentBuyingPrice,
-    );
-
-  const oldQuantity =
-    before.quantityReceived;
-
-  const oldBuyingPrice =
-    before.buyingPrice;
-
-  const quantityBeforeReceipt =
-    currentQuantity - oldQuantity;
-
-  if (quantityBeforeReceipt < 0) {
-    throw new StockFixError(
-      'The current stock no longer matches this entry.',
-    );
-  }
-
-  const valueBeforeReceipt = Math.max(
-    0,
-    currentBuyingPrice *
-      currentQuantity -
-      oldBuyingPrice *
-        oldQuantity,
-  );
-
-  const newCurrentQuantity =
-    quantityBeforeReceipt +
-    after.quantityReceived;
-
-  const newStockValue =
-    valueBeforeReceipt +
-    after.buyingPrice *
-      after.quantityReceived;
-
-  const newBuyingPrice =
-    newCurrentQuantity > 0
-      ? Number(
-          (
-            newStockValue /
-            newCurrentQuantity
-          ).toFixed(2),
-        )
-      : 0;
-
   await tx
     .update(stockArrivals)
     .set({
       quantityReceived:
         after.quantityReceived,
-      buyingPrice:
-        after.buyingPrice.toFixed(2),
+
       supplierName:
         after.supplierName,
+
+      reference:
+        after.reference,
+
+      notes:
+        after.notes,
     })
     .where(
       eq(
@@ -373,83 +620,74 @@ async function applyStockReceiptFix(
       ),
     );
 
-  await tx
-    .update(products)
-    .set({
-      quantity:
-        newCurrentQuantity,
-      buyingPrice:
-        newBuyingPrice.toFixed(2),
-
-      supplierName:
-        after.supplierName ??
-        receipt.currentSupplierName,
-
-      updatedAt: new Date(),
-    })
-    .where(
-      eq(
-        products.id,
-        receipt.productId,
-      ),
-    );
+  await reconcileProductStock(
+    tx,
+    receipt.productId,
+  );
 
   return {
     targetLabel:
       receipt.productName,
+
     before,
   };
 }
 
-async function getCurrentReceipt(
-  receiptId: string,
+function revalidateStockFixPaths(
+  receiptId?: string,
 ) {
-  const [receipt] = await db
-    .select({
-      id: stockArrivals.id,
-      productName:
-        stockArrivals.productName,
-      quantityReceived:
-        stockArrivals.quantityReceived,
-      buyingPrice:
-        stockArrivals.buyingPrice,
-      supplierName:
-        stockArrivals.supplierName,
-    })
-    .from(stockArrivals)
-    .where(
-      eq(stockArrivals.id, receiptId),
-    )
-    .limit(1);
+  revalidatePath(
+    '/stock',
+  );
 
-  return receipt || null;
-}
+  revalidatePath(
+    '/products',
+  );
 
-function revalidateStockFixPaths() {
-  revalidatePath('/stock');
-  revalidatePath('/products');
-  revalidatePath('/sales/new');
-  revalidatePath('/dashboard');
-  revalidatePath('/requests');
+  revalidatePath(
+    '/sales/new',
+  );
+
+  revalidatePath(
+    '/dashboard',
+  );
+
+  revalidatePath(
+    '/requests',
+  );
+
+  if (receiptId) {
+    revalidatePath(
+      `/stock/received/${receiptId}/fix`,
+    );
+  }
 }
 
 export async function submitStockFixAction(
   formData: FormData,
 ) {
-  const user = await requireUser();
+  const user =
+    await requireUser();
 
-  const receiptId = String(
-    formData.get('receiptId') || '',
-  ).trim();
+  const receiptId =
+    String(
+      formData.get(
+        'receiptId',
+      ) || '',
+    ).trim();
 
   if (!receiptId) {
     redirect('/stock');
   }
 
   const parsed =
-    parseFormValues(formData);
+    parseFormValues(
+      formData,
+    );
 
-  if ('error' in parsed) {
+  if (
+    'error' in parsed
+  ) {
     redirect(
       fixErrorHref(
         receiptId,
@@ -467,20 +705,15 @@ export async function submitStockFixAction(
     redirect(
       fixErrorHref(
         receiptId,
-        'This stock entry was not found.',
+        'This stock receipt was not found.',
       ),
     );
   }
 
-  const before: StockFixValues = {
-    quantityReceived:
-      receipt.quantityReceived,
-    buyingPrice:
-      Number(receipt.buyingPrice),
-    supplierName:
-      receipt.supplierName?.trim() ||
-      null,
-  };
+  const before =
+    receiptValues(
+      receipt,
+    );
 
   if (
     sameValues(
@@ -496,11 +729,17 @@ export async function submitStockFixAction(
     );
   }
 
-  if (user.role === 'EMPLOYEE') {
-    const [existingRequest] =
+  if (
+    user.role ===
+    'EMPLOYEE'
+  ) {
+    const [
+      existingRequest,
+    ] =
       await db
         .select({
-          id: corrections.id,
+          id:
+            corrections.id,
         })
         .from(corrections)
         .where(
@@ -509,10 +748,12 @@ export async function submitStockFixAction(
               corrections.targetType,
               'STOCK_RECEIPT',
             ),
+
             eq(
               corrections.targetId,
               receiptId,
             ),
+
             eq(
               corrections.status,
               'PENDING',
@@ -521,11 +762,13 @@ export async function submitStockFixAction(
         )
         .limit(1);
 
-    if (existingRequest) {
+    if (
+      existingRequest
+    ) {
       redirect(
         fixErrorHref(
           receiptId,
-          'A request for this stock entry is already waiting for the owner.',
+          'A correction request for this receipt is already waiting for the owner.',
         ),
       );
     }
@@ -535,16 +778,22 @@ export async function submitStockFixAction(
       .values({
         targetType:
           'STOCK_RECEIPT',
-        targetId: receiptId,
+
+        targetId:
+          receiptId,
+
         targetLabel:
           receipt.productName,
 
         requestedByUserId:
           user.id,
 
-        status: 'PENDING',
+        status:
+          'PENDING',
 
-        beforeValues: before,
+        beforeValues:
+          before,
+
         afterValues:
           parsed.values,
 
@@ -552,7 +801,9 @@ export async function submitStockFixAction(
           parsed.reason,
       });
 
-    revalidateStockFixPaths();
+    revalidateStockFixPaths(
+      receiptId,
+    );
 
     redirect(
       '/stock?request=1',
@@ -570,35 +821,44 @@ export async function submitStockFixAction(
             parsed.values,
           );
 
-        const now = new Date();
+        const now =
+          new Date();
 
         await tx
           .insert(corrections)
           .values({
             targetType:
               'STOCK_RECEIPT',
+
             targetId:
               receiptId,
+
             targetLabel:
               applied.targetLabel,
 
             requestedByUserId:
               user.id,
+
             reviewedByUserId:
               user.id,
 
-            status: 'APPLIED',
+            status:
+              'APPLIED',
 
             beforeValues:
               applied.before,
+
             afterValues:
               parsed.values,
 
             reason:
               parsed.reason,
 
-            reviewedAt: now,
-            appliedAt: now,
+            reviewedAt:
+              now,
+
+            appliedAt:
+              now,
           });
       },
     );
@@ -618,9 +878,13 @@ export async function submitStockFixAction(
     throw error;
   }
 
-  revalidateStockFixPaths();
+  revalidateStockFixPaths(
+    receiptId,
+  );
 
-  redirect('/stock?fixed=1');
+  redirect(
+    '/stock?fixed=1',
+  );
 }
 
 export async function approveStockFixRequestAction(
@@ -629,10 +893,12 @@ export async function approveStockFixRequestAction(
   const owner =
     await requireOwner();
 
-  const correctionId = String(
-    formData.get('correctionId') ||
-      '',
-  ).trim();
+  const correctionId =
+    String(
+      formData.get(
+        'correctionId',
+      ) || '',
+    ).trim();
 
   if (!correctionId) {
     redirect(
@@ -642,22 +908,24 @@ export async function approveStockFixRequestAction(
     );
   }
 
-  const [request] = await db
-    .select()
-    .from(corrections)
-    .where(
-      and(
-        eq(
-          corrections.id,
-          correctionId,
+  const [request] =
+    await db
+      .select()
+      .from(corrections)
+      .where(
+        and(
+          eq(
+            corrections.id,
+            correctionId,
+          ),
+
+          eq(
+            corrections.status,
+            'PENDING',
+          ),
         ),
-        eq(
-          corrections.status,
-          'PENDING',
-        ),
-      ),
-    )
-    .limit(1);
+      )
+      .limit(1);
 
   if (
     !request ||
@@ -671,17 +939,22 @@ export async function approveStockFixRequestAction(
     );
   }
 
-  let before: StockFixValues;
-  let after: StockFixValues;
+  let before:
+    StockFixValues;
+
+  let after:
+    StockFixValues;
 
   try {
-    before = snapshotToValues(
-      request.beforeValues,
-    );
+    before =
+      snapshotToValues(
+        request.beforeValues,
+      );
 
-    after = snapshotToValues(
-      request.afterValues,
-    );
+    after =
+      snapshotToValues(
+        request.afterValues,
+      );
   } catch (error) {
     if (
       error instanceof
@@ -707,30 +980,56 @@ export async function approveStockFixRequestAction(
           after,
         );
 
-        const now = new Date();
+        const now =
+          new Date();
 
-        await tx
-          .update(corrections)
-          .set({
-            status: 'APPLIED',
-            reviewedByUserId:
-              owner.id,
-            reviewedAt: now,
-            appliedAt: now,
-            updatedAt: now,
-          })
-          .where(
-            and(
-              eq(
+        const updated =
+          await tx
+            .update(
+              corrections,
+            )
+            .set({
+              status:
+                'APPLIED',
+
+              reviewedByUserId:
+                owner.id,
+
+              reviewedAt:
+                now,
+
+              appliedAt:
+                now,
+
+              updatedAt:
+                now,
+            })
+            .where(
+              and(
+                eq(
+                  corrections.id,
+                  request.id,
+                ),
+
+                eq(
+                  corrections.status,
+                  'PENDING',
+                ),
+              ),
+            )
+            .returning({
+              id:
                 corrections.id,
-                request.id,
-              ),
-              eq(
-                corrections.status,
-                'PENDING',
-              ),
-            ),
+            });
+
+        if (
+          updated.length ===
+          0
+        ) {
+          throw new StockFixError(
+            'This request has already been reviewed.',
           );
+        }
       },
     );
   } catch (error) {
@@ -748,7 +1047,9 @@ export async function approveStockFixRequestAction(
     throw error;
   }
 
-  revalidateStockFixPaths();
+  revalidateStockFixPaths(
+    request.targetId,
+  );
 
   redirect(
     '/requests?approved=1',
@@ -761,10 +1062,12 @@ export async function rejectStockFixRequestAction(
   const owner =
     await requireOwner();
 
-  const correctionId = String(
-    formData.get('correctionId') ||
-      '',
-  ).trim();
+  const correctionId =
+    String(
+      formData.get(
+        'correctionId',
+      ) || '',
+    ).trim();
 
   if (!correctionId) {
     redirect(
@@ -774,34 +1077,52 @@ export async function rejectStockFixRequestAction(
     );
   }
 
-  const now = new Date();
+  const now =
+    new Date();
 
-  const rejected = await db
-    .update(corrections)
-    .set({
-      status: 'REJECTED',
-      reviewedByUserId:
-        owner.id,
-      reviewedAt: now,
-      updatedAt: now,
-    })
-    .where(
-      and(
-        eq(
+  const rejected =
+    await db
+      .update(corrections)
+      .set({
+        status:
+          'REJECTED',
+
+        reviewedByUserId:
+          owner.id,
+
+        reviewedAt:
+          now,
+
+        updatedAt:
+          now,
+      })
+      .where(
+        and(
+          eq(
+            corrections.id,
+            correctionId,
+          ),
+
+          eq(
+            corrections.status,
+            'PENDING',
+          ),
+
+          eq(
+            corrections.targetType,
+            'STOCK_RECEIPT',
+          ),
+        ),
+      )
+      .returning({
+        id:
           corrections.id,
-          correctionId,
-        ),
-        eq(
-          corrections.status,
-          'PENDING',
-        ),
-      ),
-    )
-    .returning({
-      id: corrections.id,
-    });
+      });
 
-  if (rejected.length === 0) {
+  if (
+    rejected.length ===
+    0
+  ) {
     redirect(
       requestsErrorHref(
         'Request was not found.',
@@ -809,7 +1130,7 @@ export async function rejectStockFixRequestAction(
     );
   }
 
-  revalidatePath('/requests');
+  revalidateStockFixPaths();
 
   redirect(
     '/requests?rejected=1',

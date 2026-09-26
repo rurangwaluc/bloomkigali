@@ -1,34 +1,76 @@
 'use server';
 
-import { eq, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { db } from '@bloom-kigali/db/client';
+import {
+  eq,
+  sql,
+} from 'drizzle-orm';
+import {
+  revalidatePath,
+} from 'next/cache';
+import {
+  redirect,
+} from 'next/navigation';
+
+import {
+  db,
+} from '@bloom-kigali/db/client';
+
 import {
   products,
   stockArrivals,
 } from '@bloom-kigali/db/schema';
-import { stockArrivalSchema } from '@bloom-kigali/validators/stock';
-import { requireUser } from '@/lib/auth/session';
+
+import {
+  stockArrivalSchema,
+} from '@bloom-kigali/validators/stock';
+
+import {
+  requireUser,
+} from '@/lib/auth/session';
 
 function cleanOptional(
-  value: string | undefined,
+  value:
+    | string
+    | undefined,
 ) {
-  const cleaned = value?.trim();
-  return cleaned ? cleaned : null;
+  const cleaned =
+    value?.trim();
+
+  return cleaned
+    ? cleaned
+    : null;
+}
+
+function optionalFormValue(
+  formData: FormData,
+  key: string,
+) {
+  const value =
+    String(
+      formData.get(key) || '',
+    ).trim();
+
+  return value || undefined;
 }
 
 function receiveErrorHref(
   productId: string,
   message: string,
 ) {
-  const params = new URLSearchParams();
+  const params =
+    new URLSearchParams();
 
   if (productId) {
-    params.set('product', productId);
+    params.set(
+      'product',
+      productId,
+    );
   }
 
-  params.set('error', message);
+  params.set(
+    'error',
+    message,
+  );
 
   return `/stock/receive?${params.toString()}`;
 }
@@ -36,32 +78,48 @@ function receiveErrorHref(
 export async function receiveStockAction(
   formData: FormData,
 ) {
-  const user = await requireUser();
+  const user =
+    await requireUser();
 
-  const rawProductId = String(
-    formData.get('productId') || '',
-  );
+  const rawProductId =
+    String(
+      formData.get('productId') ||
+        '',
+    ).trim();
 
-  const parsed = stockArrivalSchema.safeParse({
-    productId: rawProductId,
-    quantityReceived:
-      formData.get('quantityReceived'),
-    buyingPrice:
-      formData.get('buyingPrice') || '',
-    supplierName:
-      formData.get('supplierName') ||
-      undefined,
-    reference:
-      formData.get('reference') ||
-      undefined,
-    notes:
-      formData.get('notes') ||
-      undefined,
-  });
+  const parsed =
+    stockArrivalSchema.safeParse({
+      productId:
+        rawProductId,
+
+      quantityReceived:
+        formData.get(
+          'quantityReceived',
+        ),
+
+      supplierName:
+        optionalFormValue(
+          formData,
+          'supplierName',
+        ),
+
+      reference:
+        optionalFormValue(
+          formData,
+          'reference',
+        ),
+
+      notes:
+        optionalFormValue(
+          formData,
+          'notes',
+        ),
+    });
 
   if (!parsed.success) {
     const message =
-      parsed.error.issues[0]?.message ||
+      parsed.error.issues[0]
+        ?.message ||
       'Check the stock form.';
 
     redirect(
@@ -72,21 +130,39 @@ export async function receiveStockAction(
     );
   }
 
-  const [product] = await db
-    .select()
-    .from(products)
-    .where(
-      eq(
-        products.id,
-        parsed.data.productId,
-      ),
-    )
-    .limit(1);
+  const [product] =
+    await db
+      .select({
+        id:
+          products.id,
+
+        name:
+          products.name,
+
+        sellingPrice:
+          products.sellingPrice,
+
+        status:
+          products.status,
+
+        itemType:
+          products.itemType,
+      })
+      .from(products)
+      .where(
+        eq(
+          products.id,
+          parsed.data.productId,
+        ),
+      )
+      .limit(1);
 
   if (
     !product ||
-    product.status !== 'ACTIVE' ||
-    product.itemType !== 'PRODUCT'
+    product.status !==
+      'ACTIVE' ||
+    product.itemType !==
+      'PRODUCT'
   ) {
     redirect(
       receiveErrorHref(
@@ -96,92 +172,198 @@ export async function receiveStockAction(
     );
   }
 
-  const supplierName = cleanOptional(
-    parsed.data.supplierName,
+  const supplierName =
+    cleanOptional(
+      parsed.data.supplierName,
+    );
+
+  const reference =
+    cleanOptional(
+      parsed.data.reference,
+    );
+
+  const notes =
+    cleanOptional(
+      parsed.data.notes,
+    );
+
+  await db.transaction(
+    async (tx) => {
+      await tx
+        .insert(
+          stockArrivals,
+        )
+        .values({
+          productId:
+            product.id,
+
+          receivedByUserId:
+            user.id,
+
+          productName:
+            product.name,
+
+          quantityReceived:
+            parsed.data
+              .quantityReceived,
+
+          sellingPriceSnapshot:
+            product.sellingPrice,
+
+          supplierName,
+          reference,
+          notes,
+        });
+
+      await tx
+        .update(products)
+        .set({
+          quantity: sql`
+            ${products.quantity}
+            +
+            ${parsed.data.quantityReceived}
+          `,
+
+          updatedAt:
+            new Date(),
+        })
+        .where(
+          eq(
+            products.id,
+            product.id,
+          ),
+        );
+    },
   );
 
-  const reference = cleanOptional(
-    parsed.data.reference,
+  revalidatePath(
+    '/stock',
   );
 
-  const notes = cleanOptional(
-    parsed.data.notes,
+  revalidatePath(
+    '/stock/receive',
   );
 
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(stockArrivals)
-      .values({
-        productId: product.id,
-        receivedByUserId: user.id,
-        productName: product.name,
-        quantityReceived:
-          parsed.data.quantityReceived,
-        buyingPrice:
-          parsed.data.buyingPrice,
-        supplierName,
-        batchNumber: null,
-        expiryDate: null,
-        reference,
-        notes,
+  revalidatePath(
+    '/products',
+  );
+
+  revalidatePath(
+    `/products/${product.id}`,
+  );
+
+  revalidatePath(
+    `/products/${product.id}/edit`,
+  );
+
+  revalidatePath(
+    '/sales/new',
+  );
+
+  revalidatePath(
+    '/dashboard',
+  );
+
+  redirect(
+    '/stock?received=1',
+  );
+}
+
+
+export async function recordStockDamageAction(
+  formData: FormData,
+) {
+  const user =
+    await requireUser();
+
+  const productId =
+    String(
+      formData.get(
+        'productId',
+      ) || '',
+    ).trim();
+
+  const payload = {
+    productId,
+
+    quantityDamaged:
+      formData.get(
+        'quantityDamaged',
+      ),
+
+    reason:
+      String(
+        formData.get(
+          'reason',
+        ) || '',
+      ).trim(),
+
+    notes:
+      String(
+        formData.get(
+          'notes',
+        ) || '',
+      ).trim(),
+  };
+
+  try {
+    const {
+      executeStockDamageSync,
+    } = await import(
+      '@/lib/stock/sync-server'
+    );
+
+    await db.transaction(
+      async (tx) => {
+        await executeStockDamageSync(
+          tx,
+          user,
+          payload,
+          new Date(),
+        );
+      },
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Damaged stock could not be recorded.';
+
+    const params =
+      new URLSearchParams({
+        product:
+          productId,
+
+        error:
+          message,
       });
 
-    await tx
-      .update(products)
-      .set({
-        quantity: sql`
-          ${products.quantity}
-          + ${parsed.data.quantityReceived}
-        `,
-        buyingPrice: sql`
-          CASE
-            WHEN
-              ${products.quantity} > 0
-              AND ${products.buyingPrice}::numeric > 0
-            THEN
-              ROUND(
-                (
-                  (
-                    ${products.buyingPrice}::numeric
-                    * ${products.quantity}
-                  )
-                  +
-                  (
-                    ${parsed.data.buyingPrice}::numeric
-                    * ${parsed.data.quantityReceived}
-                  )
-                )
-                /
-                NULLIF(
-                  (
-                    ${products.quantity}
-                    + ${parsed.data.quantityReceived}
-                  ),
-                  0
-                ),
-                2
-              )
-            ELSE
-              ${parsed.data.buyingPrice}::numeric
-          END
-        `,
-        supplierName:
-          supplierName ??
-          product.supplierName,
-        batchNumber: null,
-        expiryDate: null,
-        updatedAt: new Date(),
-      })
-      .where(
-        eq(products.id, product.id),
-      );
-  });
+    redirect(
+      `/stock/damage?${params.toString()}`,
+    );
+  }
 
-  revalidatePath('/stock');
-  revalidatePath('/stock/receive');
-  revalidatePath('/products');
-  revalidatePath('/sales/new');
-  revalidatePath('/dashboard');
+  revalidatePath(
+    '/stock',
+  );
 
-  redirect('/stock?received=1');
+  revalidatePath(
+    '/products',
+  );
+
+  revalidatePath(
+    `/products/${productId}`,
+  );
+
+  revalidatePath(
+    '/sales/new',
+  );
+
+  revalidatePath(
+    '/dashboard',
+  );
+
+  redirect(
+    '/stock?damaged=1',
+  );
 }

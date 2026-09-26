@@ -375,6 +375,19 @@ export const stockArrivals = pgTable('stock_arrivals', {
     .references(() => users.id, { onDelete: 'restrict' }),
   productName: varchar('product_name', { length: 180 }).notNull(),
   quantityReceived: integer('quantity_received').notNull(),
+
+  /*
+   * Snapshot of the product's selling price when this
+   * stock was received. Bloom uses selling value only;
+   * legacy buying_price remains temporarily for compatibility.
+   */
+  sellingPriceSnapshot: numeric('selling_price_snapshot', {
+    precision: 12,
+    scale: 2,
+  })
+    .notNull()
+    .default('0'),
+
   buyingPrice: numeric('buying_price', { precision: 12, scale: 2 }).notNull().default('0'),
   supplierName: varchar('supplier_name', { length: 160 }),
   batchNumber: varchar('batch_number', { length: 80 }),
@@ -383,6 +396,48 @@ export const stockArrivals = pgTable('stock_arrivals', {
   notes: text('notes'),
   arrivedAt: timestamp('arrived_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const stockDamages = pgTable('stock_damages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, {
+      onDelete: 'restrict',
+    }),
+
+  recordedByUserId: uuid('recorded_by_user_id')
+    .notNull()
+    .references(() => users.id, {
+      onDelete: 'restrict',
+    }),
+
+  /*
+   * Snapshot for readable history even if the product
+   * name changes later.
+   */
+  productName: varchar('product_name', {
+    length: 180,
+  }).notNull(),
+
+  quantityDamaged: integer('quantity_damaged')
+    .notNull(),
+
+  reason: text('reason').notNull(),
+  notes: text('notes'),
+
+  damagedAt: timestamp('damaged_at', {
+    withTimezone: true,
+  })
+    .defaultNow()
+    .notNull(),
+
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
+  })
+    .defaultNow()
+    .notNull(),
 });
 
 export const expenses = pgTable('expenses', {
@@ -513,6 +568,7 @@ export const cashDrawerMovements = pgTable('cash_drawer_movements', {
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   stockArrivals: many(stockArrivals),
+  stockDamages: many(stockDamages),
   receivedDebtPayments: many(debtPayments),
   receivedSalePayments: many(salePayments),
 
@@ -539,6 +595,7 @@ export const customersRelations = relations(customers, ({ many }) => ({
 export const productsRelations = relations(products, ({ many }) => ({
   saleItems: many(saleItems),
   stockArrivals: many(stockArrivals),
+  stockDamages: many(stockDamages),
 }));
 
 export const salesRelations = relations(sales, ({ one, many }) => ({
@@ -607,6 +664,21 @@ export const stockArrivalsRelations = relations(stockArrivals, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const stockDamagesRelations = relations(
+  stockDamages,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [stockDamages.productId],
+      references: [products.id],
+    }),
+
+    recordedBy: one(users, {
+      fields: [stockDamages.recordedByUserId],
+      references: [users.id],
+    }),
+  }),
+);
 
 export const correctionsRelations = relations(corrections, ({ one }) => ({
   requestedBy: one(users, {
@@ -693,6 +765,9 @@ export type NewSalePayment = typeof salePayments.$inferInsert;
 
 export type StockArrival = typeof stockArrivals.$inferSelect;
 export type NewStockArrival = typeof stockArrivals.$inferInsert;
+
+export type StockDamage = typeof stockDamages.$inferSelect;
+export type NewStockDamage = typeof stockDamages.$inferInsert;
 
 export type Expense = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;
