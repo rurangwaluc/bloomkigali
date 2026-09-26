@@ -25,6 +25,7 @@ function emitOutboxChanged() {
 
 export async function enqueueOfflineOperation(
   input: {
+    operationId?: string;
     userId: string;
     kind: OfflineOperationKind;
     payload: unknown;
@@ -36,7 +37,9 @@ export async function enqueueOfflineOperation(
   const now = Date.now();
 
   const operation: OfflineOperation = {
-    operationId: crypto.randomUUID(),
+    operationId:
+      input.operationId ||
+      crypto.randomUUID(),
     userId: input.userId,
     kind: input.kind,
     payload: input.payload,

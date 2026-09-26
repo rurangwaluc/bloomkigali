@@ -109,7 +109,7 @@ export default async function OwnerLayout({
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--text)]">
+    <main className="min-h-screen overflow-x-hidden bg-[var(--background)] text-[var(--text)]">
       <AppSidebar
         userRole={user.role}
       />
@@ -118,7 +118,7 @@ export default async function OwnerLayout({
         userId={user.id}
       />
 
-      <div className="min-h-screen lg:pl-[220px]">
+      <div className="min-h-screen min-w-0 lg:pl-[220px]">
         <div className="w-full px-3 py-3 sm:px-5 sm:py-5 lg:px-7 xl:px-8">
           <div className="mx-auto w-full max-w-[1540px] space-y-4 sm:space-y-5">
             <AppHeader

@@ -102,6 +102,7 @@ export default async function EditProductPage({
     <ProductForm
       product={product}
       backHref="/products"
+      userId={user.id}
       userRole={user.role}
       unitLocked={
         stockUse.length > 0 ||

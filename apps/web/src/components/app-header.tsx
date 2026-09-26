@@ -46,6 +46,17 @@ function getPageName(pathname: string) {
     };
   }
 
+  if (
+    pathname.startsWith('/products/') &&
+    pathname !== '/products/new' &&
+    !pathname.endsWith('/edit')
+  ) {
+    return {
+      eyebrow: 'Products',
+      title: 'Product details',
+    };
+  }
+
   if (pathname === '/products') {
     return {
       eyebrow: 'Products',
@@ -216,7 +227,7 @@ export function AppHeader({
 
   return (
     <header>
-      <div className="flex min-h-14 items-center gap-3 border-b border-[var(--border)] pb-3">
+      <div className="flex min-h-12 items-center gap-2 border-b border-[var(--border)] pb-3 sm:min-h-14 sm:gap-3">
         <form
           action="/products"
           method="get"
@@ -285,7 +296,7 @@ export function AppHeader({
       </div>
 
       {!onDashboard ? (
-        <div className="pb-1 pt-5 pl-12 lg:pl-0">
+        <div className="pb-1 pl-12 pt-4 sm:pt-5 lg:pl-0">
           {page.title !== 'Settings' ? (
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
               {page.eyebrow}
@@ -295,8 +306,8 @@ export function AppHeader({
           <h1
             className={
               page.title === 'Settings'
-                ? 'text-2xl font-black tracking-tight text-[var(--text)]'
-                : 'mt-1 text-2xl font-black tracking-tight text-[var(--text)]'
+                ? 'text-xl font-black tracking-tight text-[var(--text)] sm:text-2xl'
+                : 'mt-1 text-xl font-black tracking-tight text-[var(--text)] sm:text-2xl'
             }
           >
             {page.title}

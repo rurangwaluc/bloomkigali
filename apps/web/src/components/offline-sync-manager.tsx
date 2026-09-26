@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import {
+  useEffect,
+} from 'react';
+
+import {
+  useRouter,
+} from 'next/navigation';
 
 import {
   cleanupCompletedOperations,
@@ -18,84 +24,124 @@ type OfflineSyncManagerProps = {
 export function OfflineSyncManager({
   userId,
 }: OfflineSyncManagerProps) {
+  const router =
+    useRouter();
+
   useEffect(() => {
-    let disposed = false;
+    let cancelled =
+      false;
+
+    let running =
+      false;
 
     async function sync() {
-      if (disposed) {
+      if (running) {
         return;
       }
 
-      await runOutboxSync(
-        userId,
-      );
+      running =
+        true;
+
+      try {
+        await resetStaleSyncingOperations(
+          userId,
+        );
+
+        const completed =
+          await runOutboxSync(
+            userId,
+          );
+
+        await cleanupCompletedOperations(
+          userId,
+        );
+
+        /*
+         * This second refresh happens after the
+         * complete operation, including a pending
+         * product photo, has finished syncing.
+         */
+        if (
+          !cancelled &&
+          completed > 0
+        ) {
+          router.refresh();
+        }
+      } finally {
+        running =
+          false;
+      }
     }
 
-    async function initialize() {
-      await resetStaleSyncingOperations(
-        userId,
-      );
-
-      await cleanupCompletedOperations(
-        userId,
-      );
-
-      await sync();
-    }
-
-    function handleOnline() {
+    function requestSync() {
       void sync();
     }
 
-    function handleOutboxChanged() {
-      void sync();
+    /*
+     * The Product database write completes before
+     * its photo upload. Refreshing here makes the
+     * product/details change visible immediately
+     * while R2 continues in the background.
+     */
+    function refreshCommittedData() {
+      if (!cancelled) {
+        router.refresh();
+      }
     }
 
-    function handleFocus() {
-      void sync();
-    }
-
-    function handleVisibilityChange() {
+    function onVisible() {
       if (
         document.visibilityState ===
         'visible'
       ) {
-        void sync();
+        requestSync();
       }
     }
 
-    void initialize();
+    const startup =
+      window.setTimeout(
+        requestSync,
+        0,
+      );
+
+    const interval =
+      window.setInterval(
+        requestSync,
+        60_000,
+      );
 
     window.addEventListener(
       'online',
-      handleOnline,
-    );
-
-    window.addEventListener(
-      'bloom-kigali:outbox-changed',
-      handleOutboxChanged,
+      requestSync,
     );
 
     window.addEventListener(
       'focus',
-      handleFocus,
+      requestSync,
+    );
+
+    window.addEventListener(
+      'bloom-kigali:outbox-changed',
+      requestSync,
+    );
+
+    window.addEventListener(
+      'bloom-kigali:data-committed',
+      refreshCommittedData,
     );
 
     document.addEventListener(
       'visibilitychange',
-      handleVisibilityChange,
+      onVisible,
     );
 
-    const interval =
-      window.setInterval(
-        () => {
-          void sync();
-        },
-        60_000,
-      );
-
     return () => {
-      disposed = true;
+      cancelled =
+        true;
+
+      window.clearTimeout(
+        startup,
+      );
 
       window.clearInterval(
         interval,
@@ -103,25 +149,33 @@ export function OfflineSyncManager({
 
       window.removeEventListener(
         'online',
-        handleOnline,
-      );
-
-      window.removeEventListener(
-        'bloom-kigali:outbox-changed',
-        handleOutboxChanged,
+        requestSync,
       );
 
       window.removeEventListener(
         'focus',
-        handleFocus,
+        requestSync,
+      );
+
+      window.removeEventListener(
+        'bloom-kigali:outbox-changed',
+        requestSync,
+      );
+
+      window.removeEventListener(
+        'bloom-kigali:data-committed',
+        refreshCommittedData,
       );
 
       document.removeEventListener(
         'visibilitychange',
-        handleVisibilityChange,
+        onVisible,
       );
     };
-  }, [userId]);
+  }, [
+    router,
+    userId,
+  ]);
 
   return null;
 }

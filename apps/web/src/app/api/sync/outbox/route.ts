@@ -1,15 +1,29 @@
-import { NextResponse } from 'next/server';
+import {
+  NextResponse,
+} from 'next/server';
 
 import {
   getCurrentUser,
 } from '@/lib/auth/session';
 
 import {
+  OfflineOperationConflictError,
+  runIdempotentOfflineOperation,
+} from '@/lib/offline/server';
+
+import {
   OFFLINE_OPERATION_KINDS,
   type OfflineOperationKind,
 } from '@/lib/offline/types';
 
-export const runtime = 'nodejs';
+import {
+  executeProductCreateSync,
+  executeProductUpdateSync,
+  ProductSyncError,
+} from '@/lib/products/sync-server';
+
+export const runtime =
+  'nodejs';
 
 const MAX_BODY_LENGTH =
   512 * 1024;
@@ -29,8 +43,12 @@ function errorResponse(
   status: number,
 ) {
   return NextResponse.json(
-    { error },
-    { status },
+    {
+      error,
+    },
+    {
+      status,
+    },
   );
 }
 
@@ -38,9 +56,11 @@ function isOfflineOperationKind(
   value: unknown,
 ): value is OfflineOperationKind {
   return (
-    typeof value === 'string' &&
+    typeof value ===
+      'string' &&
     (
-      OFFLINE_OPERATION_KINDS as readonly string[]
+      OFFLINE_OPERATION_KINDS as
+        readonly string[]
     ).includes(value)
   );
 }
@@ -74,9 +94,10 @@ export async function POST(
   let body: SyncBody;
 
   try {
-    body = JSON.parse(
-      rawBody,
-    ) as SyncBody;
+    body =
+      JSON.parse(
+        rawBody,
+      ) as SyncBody;
   } catch {
     return errorResponse(
       'Invalid sync request.',
@@ -85,7 +106,8 @@ export async function POST(
   }
 
   if (
-    typeof body.operationId !== 'string' ||
+    typeof body.operationId !==
+      'string' ||
     !UUID_PATTERN.test(
       body.operationId,
     )
@@ -108,7 +130,8 @@ export async function POST(
   }
 
   if (
-    typeof body.createdAt !== 'number' ||
+    typeof body.createdAt !==
+      'number' ||
     !Number.isFinite(
       body.createdAt,
     ) ||
@@ -120,13 +143,123 @@ export async function POST(
     );
   }
 
-  /*
-   * Business handlers are enabled one module at a time.
-   * Never acknowledge an offline write until that module
-   * has its real transactional/idempotent implementation.
-   */
-  return errorResponse(
-    'Offline sync for this action is not enabled yet.',
-    422,
-  );
+  const clientCreatedAt =
+    new Date(
+      body.createdAt,
+    );
+
+  if (
+    Number.isNaN(
+      clientCreatedAt.getTime(),
+    )
+  ) {
+    return errorResponse(
+      'Invalid operation time.',
+      400,
+    );
+  }
+
+  try {
+    if (
+      body.kind ===
+      'PRODUCT_CREATE'
+    ) {
+      const execution =
+        await runIdempotentOfflineOperation({
+          operationId:
+            body.operationId,
+
+          userId:
+            user.id,
+
+          kind:
+            body.kind,
+
+          payload:
+            body.payload,
+
+          clientCreatedAt,
+
+          execute:
+            async (tx) =>
+              executeProductCreateSync(
+                tx,
+                body.payload,
+              ),
+        });
+
+      return NextResponse.json({
+        ok: true,
+        replayed:
+          execution.replayed,
+        result:
+          execution.result,
+      });
+    }
+
+    if (
+      body.kind ===
+      'PRODUCT_UPDATE'
+    ) {
+      const execution =
+        await runIdempotentOfflineOperation({
+          operationId:
+            body.operationId,
+
+          userId:
+            user.id,
+
+          kind:
+            body.kind,
+
+          payload:
+            body.payload,
+
+          clientCreatedAt,
+
+          execute:
+            async (tx) =>
+              executeProductUpdateSync(
+                tx,
+                user,
+                body.payload,
+              ),
+        });
+
+      return NextResponse.json({
+        ok: true,
+        replayed:
+          execution.replayed,
+        result:
+          execution.result,
+      });
+    }
+
+    return errorResponse(
+      'Offline sync for this action is not enabled yet.',
+      422,
+    );
+  } catch (error) {
+    if (
+      error instanceof
+      ProductSyncError
+    ) {
+      return errorResponse(
+        error.message,
+        error.status,
+      );
+    }
+
+    if (
+      error instanceof
+      OfflineOperationConflictError
+    ) {
+      return errorResponse(
+        error.message,
+        409,
+      );
+    }
+
+    throw error;
+  }
 }

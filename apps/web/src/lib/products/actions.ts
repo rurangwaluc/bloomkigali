@@ -1,12 +1,26 @@
 'use server';
 
 import {
+  randomUUID,
+} from 'node:crypto';
+
+import {
   and,
   eq,
 } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { db } from '@bloom-kigali/db/client';
+
+import {
+  revalidatePath,
+} from 'next/cache';
+
+import {
+  redirect,
+} from 'next/navigation';
+
+import {
+  db,
+} from '@bloom-kigali/db/client';
+
 import {
   corrections,
   products,
@@ -14,10 +28,12 @@ import {
   stockArrivals,
   type Product,
 } from '@bloom-kigali/db/schema';
+
 import {
   productFormSchema,
   type ProductFormInput,
 } from '@bloom-kigali/validators/product';
+
 import {
   requireOwner,
   requireUser,
@@ -25,17 +41,16 @@ import {
 
 export type ProductState = {
   error?: string;
+  success?: boolean;
+  productId?: string;
+  requestSent?: boolean;
+  completionId?: string;
 };
 
 type ProductChangeValues = {
   name: string;
   category: string;
-  customerType:
-    ProductFormInput['customerType'];
-  ageStage: string | null;
-  size: string | null;
-  color: string | null;
-  unit: ProductFormInput['unit'];
+  unit: string;
   sellingPrice: number;
   minQuantity: number;
   notes: string | null;
@@ -43,16 +58,26 @@ type ProductChangeValues = {
 
 type DbTransaction =
   Parameters<
-    Parameters<typeof db.transaction>[0]
+    Parameters<
+      typeof db.transaction
+    >[0]
   >[0];
 
-class ProductChangeError extends Error {}
+const PRODUCT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+class ProductChangeError
+  extends Error {}
 
 function cleanOptional(
   value: string | undefined,
 ) {
-  const cleaned = value?.trim();
-  return cleaned ? cleaned : null;
+  const cleaned =
+    value?.trim();
+
+  return cleaned
+    ? cleaned
+    : null;
 }
 
 function getFormValues(
@@ -60,25 +85,20 @@ function getFormValues(
 ) {
   return {
     itemType: 'PRODUCT',
-    name: formData.get('name'),
-    category: formData.get('category'),
-    customerType:
-      formData.get('customerType'),
-    ageStage:
-      formData.get('ageStage') ||
-      undefined,
-    size:
-      formData.get('size') ||
-      undefined,
-    color:
-      formData.get('color') ||
-      undefined,
-    unit: formData.get('unit'),
+    name:
+      formData.get('name'),
+    category:
+      formData.get('category'),
+    unit:
+      formData.get('unit'),
     sellingPrice:
-      formData.get('sellingPrice') ||
-      '',
+      formData.get(
+        'sellingPrice',
+      ) || '',
     minQuantity:
-      formData.get('minQuantity'),
+      formData.get(
+        'minQuantity',
+      ),
     notes:
       formData.get('notes') ||
       undefined,
@@ -91,21 +111,19 @@ function valuesFromParsed(
   return {
     name: value.name,
     category: value.category,
-    customerType:
-      value.customerType,
-    ageStage:
-      cleanOptional(value.ageStage),
-    size:
-      cleanOptional(value.size),
-    color:
-      cleanOptional(value.color),
     unit: value.unit,
     sellingPrice:
-      Number(value.sellingPrice),
+      Number(
+        value.sellingPrice,
+      ),
     minQuantity:
-      Number(value.minQuantity),
+      Number(
+        value.minQuantity,
+      ),
     notes:
-      cleanOptional(value.notes),
+      cleanOptional(
+        value.notes,
+      ),
   };
 }
 
@@ -114,24 +132,13 @@ function valuesFromProduct(
 ): ProductChangeValues {
   return {
     name: product.name,
-    category: product.category,
-    customerType:
-      product.customerType as
-        ProductChangeValues['customerType'],
-    ageStage:
-      product.ageStage?.trim() ||
-      null,
-    size:
-      product.size?.trim() ||
-      null,
-    color:
-      product.color?.trim() ||
-      null,
-    unit:
-      product.unit as
-        ProductChangeValues['unit'],
+    category:
+      product.category,
+    unit: product.unit,
     sellingPrice:
-      Number(product.sellingPrice),
+      Number(
+        product.sellingPrice,
+      ),
     minQuantity:
       product.minQuantity,
     notes:
@@ -141,32 +148,44 @@ function valuesFromProduct(
 }
 
 function valuesFromSnapshot(
-  value: Record<string, unknown>,
+  value: unknown,
 ): ProductChangeValues {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value)
+  ) {
+    throw new ProductChangeError(
+      'This request has invalid product details.',
+    );
+  }
+
+  const snapshot =
+    value as Record<
+      string,
+      unknown
+    >;
+
   const parsed =
     productFormSchema.safeParse({
       itemType: 'PRODUCT',
-      name: value.name,
-      category: value.category,
-      customerType:
-        value.customerType,
-      ageStage:
-        value.ageStage ?? undefined,
-      size:
-        value.size ?? undefined,
-      color:
-        value.color ?? undefined,
-      unit: value.unit,
+      name: snapshot.name,
+      category:
+        snapshot.category,
+      unit: snapshot.unit,
       sellingPrice:
         String(
-          value.sellingPrice ?? '',
+          snapshot.sellingPrice ??
+            '',
         ),
       minQuantity:
         String(
-          value.minQuantity ?? '',
+          snapshot.minQuantity ??
+            '',
         ),
       notes:
-        value.notes ?? undefined,
+        snapshot.notes ??
+        undefined,
     });
 
   if (!parsed.success) {
@@ -199,12 +218,8 @@ async function applyProductValues(
     .update(products)
     .set({
       name: values.name,
-      category: values.category,
-      customerType:
-        values.customerType,
-      ageStage: values.ageStage,
-      size: values.size,
-      color: values.color,
+      category:
+        values.category,
       unit: values.unit,
       sellingPrice:
         values.sellingPrice.toFixed(
@@ -213,7 +228,8 @@ async function applyProductValues(
       minQuantity:
         values.minQuantity,
       notes: values.notes,
-      updatedAt: new Date(),
+      updatedAt:
+        new Date(),
     })
     .where(
       eq(
@@ -224,18 +240,37 @@ async function applyProductValues(
 }
 
 function revalidateProductPaths() {
-  revalidatePath('/products');
-  revalidatePath('/stock');
-  revalidatePath('/stock/receive');
-  revalidatePath('/sales/new');
-  revalidatePath('/dashboard');
-  revalidatePath('/requests');
+  revalidatePath(
+    '/products',
+  );
+
+  revalidatePath(
+    '/stock',
+  );
+
+  revalidatePath(
+    '/stock/receive',
+  );
+
+  revalidatePath(
+    '/sales/new',
+  );
+
+  revalidatePath(
+    '/dashboard',
+  );
+
+  revalidatePath(
+    '/requests',
+  );
 }
 
 function requestErrorHref(
   message: string,
 ) {
-  return `/requests?error=${encodeURIComponent(message)}`;
+  return `/requests?error=${encodeURIComponent(
+    message,
+  )}`;
 }
 
 export async function createProductAction(
@@ -246,7 +281,9 @@ export async function createProductAction(
 
   const parsed =
     productFormSchema.safeParse(
-      getFormValues(formData),
+      getFormValues(
+        formData,
+      ),
     );
 
   if (!parsed.success) {
@@ -258,49 +295,136 @@ export async function createProductAction(
     };
   }
 
-  await db.insert(products).values({
-    itemType: 'PRODUCT',
-    name: parsed.data.name,
-    category:
-      parsed.data.category,
-    customerType:
-      parsed.data.customerType,
-    ageStage:
-      cleanOptional(
-        parsed.data.ageStage,
-      ),
-    size:
-      cleanOptional(
-        parsed.data.size,
-      ),
-    color:
-      cleanOptional(
-        parsed.data.color,
-      ),
-    unit: parsed.data.unit,
+  const suppliedProductId =
+    String(
+      formData.get(
+        'productId',
+      ) || '',
+    ).trim();
 
-    batchNumber: null,
-    supplierName: null,
-    buyingPrice: '0',
-    quantity: 0,
-    expiryDate: null,
+  if (
+    suppliedProductId &&
+    !PRODUCT_ID_PATTERN.test(
+      suppliedProductId,
+    )
+  ) {
+    return {
+      error:
+        'Invalid product ID.',
+    };
+  }
 
-    sellingPrice:
-      parsed.data.sellingPrice,
-    minQuantity:
-      Number(
-        parsed.data.minQuantity,
-      ),
-    notes:
-      cleanOptional(
-        parsed.data.notes,
-      ),
-    status: 'ACTIVE',
-  });
+  const productId =
+    suppliedProductId ||
+    randomUUID();
+
+  const values =
+    valuesFromParsed(
+      parsed.data,
+    );
+
+  try {
+    await db.transaction(
+      async (tx) => {
+        const inserted =
+          await tx
+            .insert(products)
+            .values({
+              id: productId,
+
+              itemType:
+                'PRODUCT',
+
+              name:
+                values.name,
+
+              category:
+                values.category,
+
+              unit:
+                values.unit,
+
+              sellingPrice:
+                values.sellingPrice.toFixed(
+                  2,
+                ),
+
+              minQuantity:
+                values.minQuantity,
+
+              notes:
+                values.notes,
+
+              status:
+                'ACTIVE',
+            })
+            .onConflictDoNothing({
+              target:
+                products.id,
+            })
+            .returning({
+              id: products.id,
+            });
+
+        if (
+          inserted.length > 0
+        ) {
+          return;
+        }
+
+        const [existing] =
+          await tx
+            .select()
+            .from(products)
+            .where(
+              eq(
+                products.id,
+                productId,
+              ),
+            )
+            .limit(1);
+
+        if (
+          !existing ||
+          existing.status !==
+            'ACTIVE' ||
+          existing.itemType !==
+            'PRODUCT' ||
+          !sameProductValues(
+            valuesFromProduct(
+              existing,
+            ),
+            values,
+          )
+        ) {
+          throw new ProductChangeError(
+            'This product could not be saved. Refresh and try again.',
+          );
+        }
+      },
+    );
+  } catch (error) {
+    if (
+      error instanceof
+      ProductChangeError
+    ) {
+      return {
+        error:
+          error.message,
+      };
+    }
+
+    throw error;
+  }
 
   revalidateProductPaths();
 
-  redirect('/products');
+  return {
+    success: true,
+    productId,
+    completionId:
+      randomUUID(),
+  };
 }
 
 export async function updateProductAction(
@@ -313,7 +437,9 @@ export async function updateProductAction(
 
   const parsed =
     productFormSchema.safeParse(
-      getFormValues(formData),
+      getFormValues(
+        formData,
+      ),
     );
 
   if (!parsed.success) {
@@ -325,11 +451,21 @@ export async function updateProductAction(
     };
   }
 
-  const reason = String(
-    formData.get('reason') || '',
-  ).trim();
+  const reason =
+    String(
+      formData.get(
+        'reason',
+      ) || '',
+    ).trim();
 
-  if (reason.length < 3) {
+  const hasImageChange =
+    formData.get(
+      'hasImageChange',
+    ) === '1';
+
+  if (
+    reason.length < 3
+  ) {
     return {
       error:
         user.role === 'OWNER'
@@ -338,21 +474,24 @@ export async function updateProductAction(
     };
   }
 
-  const [product] = await db
-    .select()
-    .from(products)
-    .where(
-      eq(
-        products.id,
-        productId,
-      ),
-    )
-    .limit(1);
+  const [product] =
+    await db
+      .select()
+      .from(products)
+      .where(
+        eq(
+          products.id,
+          productId,
+        ),
+      )
+      .limit(1);
 
   if (
     !product ||
-    product.status !== 'ACTIVE' ||
-    product.itemType !== 'PRODUCT'
+    product.status !==
+      'ACTIVE' ||
+    product.itemType !==
+      'PRODUCT'
   ) {
     return {
       error:
@@ -361,22 +500,38 @@ export async function updateProductAction(
   }
 
   const before =
-    valuesFromProduct(product);
+    valuesFromProduct(
+      product,
+    );
 
   const after =
     valuesFromParsed(
       parsed.data,
     );
 
-  if (
-    sameProductValues(
+  const productDetailsChanged =
+    !sameProductValues(
       before,
       after,
-    )
+    );
+
+  if (
+    !productDetailsChanged &&
+    !hasImageChange
   ) {
     return {
       error:
         'Nothing was changed.',
+    };
+  }
+
+  if (
+    user.role === 'EMPLOYEE' &&
+    hasImageChange
+  ) {
+    return {
+      error:
+        'Ask the owner to change the product photo.',
     };
   }
 
@@ -387,9 +542,12 @@ export async function updateProductAction(
   ] = await Promise.all([
     db
       .select({
-        id: stockArrivals.id,
+        id:
+          stockArrivals.id,
       })
-      .from(stockArrivals)
+      .from(
+        stockArrivals,
+      )
       .where(
         eq(
           stockArrivals.productId,
@@ -400,7 +558,8 @@ export async function updateProductAction(
 
     db
       .select({
-        id: saleItems.id,
+        id:
+          saleItems.id,
       })
       .from(saleItems)
       .where(
@@ -413,7 +572,8 @@ export async function updateProductAction(
 
     db
       .select({
-        id: corrections.id,
+        id:
+          corrections.id,
       })
       .from(corrections)
       .where(
@@ -441,15 +601,19 @@ export async function updateProductAction(
 
   if (
     unitLocked &&
-    before.unit !== after.unit
+    before.unit !==
+      after.unit
   ) {
     return {
       error:
-        'Count by cannot be changed after stock or sales have been recorded.',
+        'Unit cannot be changed after stock or sales have been recorded.',
     };
   }
 
-  if (pendingRequest.length > 0) {
+  if (
+    pendingRequest.length >
+    0
+  ) {
     return {
       error:
         user.role === 'OWNER'
@@ -458,31 +622,47 @@ export async function updateProductAction(
     };
   }
 
-  if (user.role === 'EMPLOYEE') {
+  if (
+    user.role ===
+    'EMPLOYEE'
+  ) {
     await db
       .insert(corrections)
       .values({
-        targetType: 'PRODUCT',
-        targetId: product.id,
+        targetType:
+          'PRODUCT',
+
+        targetId:
+          product.id,
+
         targetLabel:
           product.name,
 
         requestedByUserId:
           user.id,
 
-        status: 'PENDING',
+        status:
+          'PENDING',
 
-        beforeValues: before,
-        afterValues: after,
+        beforeValues:
+          before,
+
+        afterValues:
+          after,
 
         reason,
       });
 
     revalidateProductPaths();
 
-    redirect(
-      '/products?request=1',
-    );
+    return {
+      success: true,
+      productId:
+        product.id,
+      requestSent: true,
+      completionId:
+        randomUUID(),
+    };
   }
 
   try {
@@ -534,9 +714,12 @@ export async function updateProductAction(
         ] = await Promise.all([
           tx
             .select({
-              id: stockArrivals.id,
+              id:
+                stockArrivals.id,
             })
-            .from(stockArrivals)
+            .from(
+              stockArrivals,
+            )
             .where(
               eq(
                 stockArrivals.productId,
@@ -547,9 +730,12 @@ export async function updateProductAction(
 
           tx
             .select({
-              id: saleItems.id,
+              id:
+                saleItems.id,
             })
-            .from(saleItems)
+            .from(
+              saleItems,
+            )
             .where(
               eq(
                 saleItems.productId,
@@ -566,49 +752,62 @@ export async function updateProductAction(
             currentSaleUse.length >
               0
           ) &&
-          before.unit !== after.unit
+          before.unit !==
+            after.unit
         ) {
           throw new ProductChangeError(
-            'Count by cannot be changed after stock or sales have been recorded.',
+            'Unit cannot be changed after stock or sales have been recorded.',
           );
         }
 
-        await applyProductValues(
-          tx,
-          product.id,
-          after,
-        );
+        if (
+          productDetailsChanged
+        ) {
+          await applyProductValues(
+            tx,
+            product.id,
+            after,
+          );
 
-        const now =
-          new Date();
+          const now =
+            new Date();
 
-        await tx
-          .insert(corrections)
-          .values({
-            targetType:
-              'PRODUCT',
-            targetId:
-              product.id,
-            targetLabel:
-              product.name,
+          await tx
+            .insert(corrections)
+            .values({
+              targetType:
+                'PRODUCT',
 
-            requestedByUserId:
-              user.id,
-            reviewedByUserId:
-              user.id,
+              targetId:
+                product.id,
 
-            status: 'APPLIED',
+              targetLabel:
+                product.name,
 
-            beforeValues:
-              before,
-            afterValues:
-              after,
+              requestedByUserId:
+                user.id,
 
-            reason,
+              reviewedByUserId:
+                user.id,
 
-            reviewedAt: now,
-            appliedAt: now,
-          });
+              status:
+                'APPLIED',
+
+              beforeValues:
+                before,
+
+              afterValues:
+                after,
+
+              reason,
+
+              reviewedAt:
+                now,
+
+              appliedAt:
+                now,
+            });
+        }
       },
     );
   } catch (error) {
@@ -617,7 +816,8 @@ export async function updateProductAction(
       ProductChangeError
     ) {
       return {
-        error: error.message,
+        error:
+          error.message,
       };
     }
 
@@ -626,9 +826,13 @@ export async function updateProductAction(
 
   revalidateProductPaths();
 
-  redirect(
-    '/products?updated=1',
-  );
+  return {
+    success: true,
+    productId:
+      product.id,
+    completionId:
+      randomUUID(),
+  };
 }
 
 export async function approveProductChangeRequestAction(
@@ -637,10 +841,12 @@ export async function approveProductChangeRequestAction(
   const owner =
     await requireOwner();
 
-  const correctionId = String(
-    formData.get('correctionId') ||
-      '',
-  ).trim();
+  const correctionId =
+    String(
+      formData.get(
+        'correctionId',
+      ) || '',
+    ).trim();
 
   if (!correctionId) {
     redirect(
@@ -650,26 +856,27 @@ export async function approveProductChangeRequestAction(
     );
   }
 
-  const [request] = await db
-    .select()
-    .from(corrections)
-    .where(
-      and(
-        eq(
-          corrections.id,
-          correctionId,
+  const [request] =
+    await db
+      .select()
+      .from(corrections)
+      .where(
+        and(
+          eq(
+            corrections.id,
+            correctionId,
+          ),
+          eq(
+            corrections.targetType,
+            'PRODUCT',
+          ),
+          eq(
+            corrections.status,
+            'PENDING',
+          ),
         ),
-        eq(
-          corrections.targetType,
-          'PRODUCT',
-        ),
-        eq(
-          corrections.status,
-          'PENDING',
-        ),
-      ),
-    )
-    .limit(1);
+      )
+      .limit(1);
 
   if (!request) {
     redirect(
@@ -759,9 +966,12 @@ export async function approveProductChangeRequestAction(
         ] = await Promise.all([
           tx
             .select({
-              id: stockArrivals.id,
+              id:
+                stockArrivals.id,
             })
-            .from(stockArrivals)
+            .from(
+              stockArrivals,
+            )
             .where(
               eq(
                 stockArrivals.productId,
@@ -772,9 +982,12 @@ export async function approveProductChangeRequestAction(
 
           tx
             .select({
-              id: saleItems.id,
+              id:
+                saleItems.id,
             })
-            .from(saleItems)
+            .from(
+              saleItems,
+            )
             .where(
               eq(
                 saleItems.productId,
@@ -789,10 +1002,11 @@ export async function approveProductChangeRequestAction(
             stockUse.length > 0 ||
             saleUse.length > 0
           ) &&
-          before.unit !== after.unit
+          before.unit !==
+            after.unit
         ) {
           throw new ProductChangeError(
-            'Count by cannot be changed after stock or sales have been recorded.',
+            'Unit cannot be changed after stock or sales have been recorded.',
           );
         }
 
@@ -807,15 +1021,24 @@ export async function approveProductChangeRequestAction(
 
         const applied =
           await tx
-            .update(corrections)
+            .update(
+              corrections,
+            )
             .set({
               status:
                 'APPLIED',
+
               reviewedByUserId:
                 owner.id,
-              reviewedAt: now,
-              appliedAt: now,
-              updatedAt: now,
+
+              reviewedAt:
+                now,
+
+              appliedAt:
+                now,
+
+              updatedAt:
+                now,
             })
             .where(
               and(
@@ -830,7 +1053,8 @@ export async function approveProductChangeRequestAction(
               ),
             )
             .returning({
-              id: corrections.id,
+              id:
+                corrections.id,
             });
 
         if (
@@ -869,9 +1093,12 @@ export async function archiveProductAction(
 ) {
   await requireOwner();
 
-  const productId = String(
-    formData.get('productId') || '',
-  );
+  const productId =
+    String(
+      formData.get(
+        'productId',
+      ) || '',
+    );
 
   if (!productId) {
     return;
@@ -880,8 +1107,11 @@ export async function archiveProductAction(
   await db
     .update(products)
     .set({
-      status: 'ARCHIVED',
-      updatedAt: new Date(),
+      status:
+        'ARCHIVED',
+
+      updatedAt:
+        new Date(),
     })
     .where(
       eq(
@@ -891,4 +1121,6 @@ export async function archiveProductAction(
     );
 
   revalidateProductPaths();
+
+  redirect('/products');
 }
