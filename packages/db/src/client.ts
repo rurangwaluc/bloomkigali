@@ -13,7 +13,13 @@ if (!databaseUrl) {
 
 const queryClient = new Pool({
   connectionString: databaseUrl,
-  max: 5,
+  /*
+   * Bloom runs on serverless infrastructure.
+   * Supabase transaction pooling handles
+   * concurrency across instances, so each
+   * runtime only needs one client connection.
+   */
+  max: 1,
   connectionTimeoutMillis: 10_000,
   idleTimeoutMillis: 10_000,
 });
