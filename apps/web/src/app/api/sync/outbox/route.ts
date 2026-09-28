@@ -28,6 +28,11 @@ import {
   StockSyncError,
 } from '@/lib/stock/sync-server';
 
+import {
+  executeSaleCreateSync,
+  SaleSyncError,
+} from '@/lib/sales/sync-server';
+
 export const runtime =
   'nodejs';
 
@@ -319,6 +324,47 @@ export async function POST(
       });
     }
 
+    if (
+      body.kind ===
+      'SALE_CREATE'
+    ) {
+      const execution =
+        await runIdempotentOfflineOperation({
+          operationId:
+            body.operationId,
+
+          userId:
+            user.id,
+
+          kind:
+            body.kind,
+
+          payload:
+            body.payload,
+
+          clientCreatedAt,
+
+          execute:
+            async (tx) =>
+              executeSaleCreateSync(
+                tx,
+                user,
+                body.payload,
+                clientCreatedAt,
+              ),
+        });
+
+      return NextResponse.json({
+        ok: true,
+
+        replayed:
+          execution.replayed,
+
+        result:
+          execution.result,
+      });
+    }
+
     return errorResponse(
       'Offline sync for this action is not enabled yet.',
       422,
@@ -328,7 +374,9 @@ export async function POST(
       error instanceof
         ProductSyncError ||
       error instanceof
-        StockSyncError
+        StockSyncError ||
+      error instanceof
+        SaleSyncError
     ) {
       return errorResponse(
         error.message,

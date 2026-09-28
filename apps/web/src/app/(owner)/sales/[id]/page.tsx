@@ -31,11 +31,21 @@ type SaleDetailPageProps = {
 };
 
 function money(
-  value: string | number,
+  value:
+    | string
+    | number,
 ) {
-  return `RWF ${Number(
-    value,
-  ).toLocaleString('en-US')}`;
+  return new Intl.NumberFormat(
+    'en-RW',
+    {
+      maximumFractionDigits:
+        0,
+    },
+  ).format(
+    Number(
+      value || 0,
+    ),
+  );
 }
 
 function dateTime(value: Date) {
@@ -434,6 +444,18 @@ export default async function SaleDetailPage({
   const isPaid =
     unpaid <= 0;
 
+  const paidTotal =
+    Number(
+      sale.paidAmount,
+    );
+
+  const paymentStatus =
+    isPaid
+      ? 'Paid'
+      : paidTotal > 0
+        ? 'Part paid'
+        : 'Unpaid';
+
   const changeReturned =
     Number(
       sale.changeReturned,
@@ -610,63 +632,29 @@ export default async function SaleDetailPage({
         </section>
       ) : null}
 
-      <header className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+      <header className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <div className="flex flex-col gap-5 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6">
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
-              Sale
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
+              Customer
             </p>
 
-            <h2 className="mt-1 font-display text-3xl font-black tracking-tight text-[var(--text)]">
+            <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[var(--text)] sm:text-3xl">
               {sale.customerName ||
                 'Walk-in customer'}
             </h2>
 
             <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
-              {sale.customerPhone
-                ? `${sale.customerPhone} / `
-                : ''}
               {dateTime(
                 sale.saleDate,
               )}
+              {sale.customerPhone
+                ? ` / ${sale.customerPhone}`
+                : ''}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-6 sm:justify-end">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                Sale total
-              </p>
-
-              <p className="mt-1 text-xl font-black text-[var(--text)]">
-                {money(
-                  sale.totalAmount,
-                )}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                {isPaid
-                  ? 'Status'
-                  : 'Still unpaid'}
-              </p>
-
-              <p
-                className={
-                  isPaid
-                    ? 'mt-1 text-xl font-black text-[#5F8A63] dark:text-[#79C27D]'
-                    : 'mt-1 text-xl font-black text-[#F2A71B]'
-                }
-              >
-                {isPaid
-                  ? 'Paid'
-                  : money(
-                      unpaid,
-                    )}
-              </p>
-            </div>
-
+          <div className="flex flex-wrap gap-2">
             {pendingSaleRequest ? (
               isOwner ? (
                 <Link
@@ -676,7 +664,7 @@ export default async function SaleDetailPage({
                   Review request
                 </Link>
               ) : (
-                <span className="inline-flex h-10 items-center justify-center rounded-lg border border-[var(--primary)] px-4 text-sm font-black text-[var(--text)]">
+                <span className="inline-flex h-10 items-center justify-center border-l-2 border-[var(--primary)] pl-3 text-sm font-black text-[var(--primary)]">
                   Request sent
                 </span>
               )
@@ -701,51 +689,121 @@ export default async function SaleDetailPage({
           </div>
         </div>
 
+        <div className="grid border-t border-[var(--border)] bg-[var(--border)] sm:grid-cols-4 sm:gap-px">
+          <div className="bg-[var(--card)] px-5 py-4 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+              Total
+            </p>
+
+            <p className="mt-1 text-lg font-black tabular-nums text-[var(--text)]">
+              {money(
+                sale.totalAmount,
+              )}
+            </p>
+          </div>
+
+          <div className="border-t border-[var(--border)] bg-[var(--card)] px-5 py-4 sm:border-0 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+              Paid
+            </p>
+
+            <p className="mt-1 text-lg font-black tabular-nums text-[var(--text)]">
+              {money(
+                paidTotal,
+              )}
+            </p>
+          </div>
+
+          <div className="border-t border-[var(--border)] bg-[var(--card)] px-5 py-4 sm:border-0 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+              Balance
+            </p>
+
+            <p
+              className={
+                unpaid > 0
+                  ? 'mt-1 text-lg font-black tabular-nums text-[#C88C18] dark:text-[#E8B449]'
+                  : 'mt-1 text-lg font-black tabular-nums text-[var(--muted)]'
+              }
+            >
+              {money(
+                unpaid,
+              )}
+            </p>
+          </div>
+
+          <div className="border-t border-[var(--border)] bg-[var(--card)] px-5 py-4 sm:border-0 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+              Status
+            </p>
+
+            <p
+              className={
+                paymentStatus ===
+                'Paid'
+                  ? 'mt-1 text-lg font-black text-[#5F8A63] dark:text-[#79C27D]'
+                  : paymentStatus ===
+                      'Part paid'
+                    ? 'mt-1 text-lg font-black text-[#C88C18] dark:text-[#E8B449]'
+                    : 'mt-1 text-lg font-black text-[#D36A5D] dark:text-[#E88A7D]'
+              }
+            >
+              {
+                paymentStatus
+              }
+            </p>
+          </div>
+        </div>
+
         {hasDiscount ? (
-          <div className="mt-5 flex flex-col gap-3 border-t border-[var(--border)] pt-4 text-sm sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              <p>
-                <span className="font-bold text-[var(--muted)]">
-                  Subtotal
-                </span>{' '}
-                <strong className="font-black text-[var(--text)]">
-                  {money(
-                    sale.subtotalAmount,
-                  )}
-                </strong>
-              </p>
+          <div className="border-t border-[var(--border)] px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                <p>
+                  <span className="font-bold text-[var(--muted)]">
+                    Subtotal
+                  </span>{' '}
+                  <strong className="font-black text-[var(--text)]">
+                    {money(
+                      sale.subtotalAmount,
+                    )}
+                  </strong>
+                </p>
 
-              <p>
-                <span className="font-bold text-[var(--muted)]">
-                  Discount
-                </span>{' '}
-                <strong className="font-black text-[var(--primary)]">
-                  -{money(
-                    discountAmount,
-                  )}
-                </strong>
-              </p>
+                <p>
+                  <span className="font-bold text-[var(--muted)]">
+                    Discount
+                  </span>{' '}
+                  <strong className="font-black text-[var(--primary)]">
+                    -{money(
+                      discountAmount,
+                    )}
+                  </strong>
+                </p>
+              </div>
+
+              {sale.discountReason ? (
+                <p className="max-w-2xl font-semibold text-[var(--text)] sm:text-right">
+                  <span className="font-bold text-[var(--muted)]">
+                    Reason
+                  </span>{' '}
+                  {sale.discountReason}
+
+                  {isOwner &&
+                  discountGiver ? (
+                    <>
+                      {' / '}
+                      <span className="font-bold text-[var(--muted)]">
+                        Given by
+                      </span>{' '}
+                      {
+                        discountGiver.name
+                      }
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
             </div>
-
-            {sale.discountReason ? (
-              <p className="max-w-2xl font-semibold text-[var(--text)] sm:text-right">
-                <span className="font-bold text-[var(--muted)]">
-                  Reason
-                </span>{' '}
-                {sale.discountReason}
-
-                {isOwner &&
-                discountGiver ? (
-                  <>
-                    {' / '}
-                    <span className="font-bold text-[var(--muted)]">
-                      Given by
-                    </span>{' '}
-                    {discountGiver.name}
-                  </>
-                ) : null}
-              </p>
-            ) : null}
           </div>
         ) : null}
       </header>
@@ -804,8 +862,7 @@ export default async function SaleDetailPage({
                       {
                         item.itemName
                       }{' '}
-                      x
-                      {
+                      ×{
                         item.quantity
                       }
                     </p>

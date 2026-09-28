@@ -1,7 +1,14 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
+
 import {
+  useRouter,
+} from 'next/navigation';
+
+import {
+  type FormEvent,
   useActionState,
   useMemo,
   useState,
@@ -15,17 +22,24 @@ import {
   createSaleAction,
 } from '@/lib/sales/actions';
 
+import {
+  enqueueOfflineOperation,
+  getOfflineOperation,
+  removeOfflineOperation,
+} from '@/lib/offline/outbox';
+
+import {
+  runOutboxSync,
+} from '@/lib/offline/sync';
+
 type SellableItem = {
   id: string;
   name: string;
   category: string;
-  customerType: string;
-  ageStage: string | null;
-  size: string | null;
-  color: string | null;
   sellingPrice: string;
   quantity: number;
   unit: string;
+  imageKey: string | null;
 };
 
 type CustomerOption = {
@@ -53,6 +67,12 @@ type PaymentMethod =
   | 'CARD';
 
 type SaleFormProps = {
+  userId: string;
+
+  cashDrawerId:
+    | string
+    | null;
+
   items: SellableItem[];
   customers: CustomerOption[];
   hasOpenDrawer: boolean;
@@ -95,24 +115,29 @@ function numberValue(
 }
 
 function money(
-  value: number,
+  value:
+    | string
+    | number,
 ) {
-  return `RWF ${value.toLocaleString(
-    'en-US',
+  return new Intl.NumberFormat(
+    'en-RW',
     {
-      maximumFractionDigits: 2,
+      maximumFractionDigits:
+        0,
     },
-  )}`;
+  ).format(
+    Number(
+      value || 0,
+    ),
+  );
 }
 
 function itemDetails(
   item: SellableItem,
 ) {
   return [
-    item.customerType,
-    item.ageStage,
-    item.size,
-    item.color,
+    item.category,
+    item.unit,
   ]
     .filter(Boolean)
     .join(' / ');
@@ -171,6 +196,8 @@ function roundedMoney(
 }
 
 export function SaleForm({
+  userId,
+  cashDrawerId,
   items,
   customers,
   hasOpenDrawer,
@@ -184,6 +211,27 @@ export function SaleForm({
     createSaleAction,
     {},
   );
+
+  const router =
+    useRouter();
+
+  const [
+    savingLocally,
+    setSavingLocally,
+  ] = useState(false);
+
+  const [
+    queuedLocally,
+    setQueuedLocally,
+  ] = useState(false);
+
+  const [
+    clientError,
+    setClientError,
+  ] =
+    useState<
+      string | null
+    >(null);
 
   const [
     customerMode,
@@ -465,7 +513,9 @@ export function SaleForm({
     !extraAllocationWrong &&
     !extraNeedsReason &&
     !creditNeedsCustomer &&
-    !pending;
+    !pending &&
+    !savingLocally &&
+    !queuedLocally;
 
   const filteredCustomers =
     useMemo(() => {
@@ -614,7 +664,7 @@ export function SaleForm({
           return true;
         }
 
-        return item.name
+        return `${item.name} ${item.category} ${item.unit}`
           .toLowerCase()
           .includes(search);
       })
@@ -651,9 +701,284 @@ export function SaleForm({
     }
   }
 
+  async function saveSaleLocally(
+    event:
+      FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (!canSave) {
+      return;
+    }
+
+    setSavingLocally(
+      true,
+    );
+
+    setQueuedLocally(
+      false,
+    );
+
+    setClientError(
+      null,
+    );
+
+    const formData =
+      new FormData(
+        event.currentTarget,
+      );
+
+    let saleItems:
+      unknown;
+
+    try {
+      saleItems =
+        JSON.parse(
+          String(
+            formData.get(
+              'itemsJson',
+            ) || '[]',
+          ),
+        );
+    } catch {
+      setSavingLocally(
+        false,
+      );
+
+      setClientError(
+        'Check the selected products.',
+      );
+
+      return;
+    }
+
+    const value = (
+      field: string,
+      fallback = '',
+    ) =>
+      String(
+        formData.get(
+          field,
+        ) ??
+          fallback,
+      );
+
+    const operationId =
+      crypto.randomUUID();
+
+    try {
+      await enqueueOfflineOperation({
+        operationId,
+
+        userId,
+
+        kind:
+          'SALE_CREATE',
+
+        payload: {
+          customerMode:
+            value(
+              'customerMode',
+            ),
+
+          customerId:
+            value(
+              'customerId',
+            ),
+
+          newCustomerName:
+            value(
+              'newCustomerName',
+            ),
+
+          newCustomerPhone:
+            value(
+              'newCustomerPhone',
+            ),
+
+          paymentMethod:
+            value(
+              'paymentMethod',
+            ),
+
+          discountAmount:
+            value(
+              'discountAmount',
+              '0',
+            ) || '0',
+
+          discountReason:
+            value(
+              'discountReason',
+            ),
+
+          amountReceived:
+            value(
+              'amountReceived',
+              '0',
+            ) || '0',
+
+          changeReturned:
+            value(
+              'changeReturned',
+              '0',
+            ) || '0',
+
+          extraKept:
+            value(
+              'extraKept',
+              '0',
+            ) || '0',
+
+          extraReason:
+            value(
+              'extraReason',
+            ),
+
+          notes:
+            value(
+              'notes',
+            ),
+
+          items:
+            saleItems,
+
+          cashDrawerId,
+        },
+      });
+
+      /*
+       * Offline means the local write itself is the success.
+       * The global sync manager will send it later.
+       */
+      if (
+        !navigator.onLine
+      ) {
+        setQueuedLocally(
+          true,
+        );
+
+        setSavingLocally(
+          false,
+        );
+
+        return;
+      }
+
+      /*
+       * Online: try to commit immediately, but only navigate
+       * after this specific operation is confirmed completed.
+       */
+      await runOutboxSync(
+        userId,
+      );
+
+      let operation =
+        await getOfflineOperation(
+          operationId,
+        );
+
+      /*
+       * Another global sync may already have been running
+       * when this sale entered the queue. Give this operation
+       * one immediate second pass after that sync finishes.
+       */
+      if (
+        operation?.status ===
+          'pending' &&
+        navigator.onLine
+      ) {
+        await runOutboxSync(
+          userId,
+        );
+
+        operation =
+          await getOfflineOperation(
+            operationId,
+          );
+      }
+
+      if (
+        operation?.status ===
+        'completed'
+      ) {
+        router.replace(
+          '/sales?saved=1',
+        );
+
+        router.refresh();
+
+        return;
+      }
+
+      if (
+        operation?.status ===
+          'failed' &&
+        operation
+          .nextAttemptAt ===
+          null
+      ) {
+        /*
+         * The server definitively rejected this sale for a
+         * business reason such as stale stock. Keep the form
+         * open so the user can correct it, and remove this
+         * rejected local attempt instead of leaving a dead
+         * operation in the outbox.
+         */
+        const message =
+          operation
+            .lastError ||
+          'Sale could not be saved.';
+
+        await removeOfflineOperation(
+          operationId,
+        );
+
+        setClientError(
+          message,
+        );
+
+        setSavingLocally(
+          false,
+        );
+
+        return;
+      }
+
+      /*
+       * A network/server interruption is retryable. The sale
+       * remains safely stored on this device.
+       */
+      setQueuedLocally(
+        true,
+      );
+
+      setSavingLocally(
+        false,
+      );
+    } catch (error) {
+      setSavingLocally(
+        false,
+      );
+
+      setClientError(
+        error instanceof Error
+          ? error.message
+          : 'Sale could not be saved on this device.',
+      );
+    }
+  }
+
   function submitText() {
-    if (pending) {
+    if (
+      pending ||
+      savingLocally
+    ) {
       return 'Saving sale...';
+    }
+
+    if (queuedLocally) {
+      return 'Saved on this device';
     }
 
     if (
@@ -698,6 +1023,9 @@ export function SaleForm({
   return (
     <form
       action={action}
+      onSubmit={
+        saveSaleLocally
+      }
       className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"
     >
       <input
@@ -1106,40 +1434,60 @@ export function SaleForm({
                                         null,
                                       );
                                     }}
-                                    className="flex w-full items-start justify-between gap-4 border-b border-[var(--border)] px-4 py-3 text-left last:border-b-0 hover:bg-[var(--surface)]"
+                                    className="grid w-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[var(--border)] px-4 py-3 text-left last:border-b-0 hover:bg-[var(--surface)]"
                                   >
+                                    {item.imageKey ? (
+                                      <Image
+                                        src={`/api/media/product-image/${item.id}`}
+                                        alt=""
+                                        width={44}
+                                        height={44}
+                                        unoptimized
+                                        className="h-11 w-11 rounded-md border border-[var(--border)] object-cover"
+                                      />
+                                    ) : (
+                                      <span className="flex h-11 w-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-center text-[9px] font-black uppercase tracking-[0.08em] text-[var(--muted)]">
+                                        No image
+                                      </span>
+                                    )}
+
                                     <span className="min-w-0">
-                                      <span className="block text-sm font-black text-[var(--text)]">
+                                      <span className="block truncate text-sm font-black text-[var(--text)]">
                                         {
                                           item.name
                                         }
                                       </span>
 
-                                      <span className="mt-1 block text-xs font-bold leading-5 text-[var(--muted)]">
-                                        {[
-                                          itemDetails(
-                                            item,
-                                          ),
-                                          `${quantityLabel(
-                                            item.quantity,
-                                            item.unit,
-                                          )} available`,
-                                        ]
-                                          .filter(
-                                            Boolean,
-                                          )
-                                          .join(
-                                            ' / ',
-                                          )}
+                                      <span className="mt-1 block truncate text-xs font-bold text-[var(--muted)]">
+                                        {itemDetails(
+                                          item,
+                                        )}
+                                      </span>
+
+                                      <span className="mt-0.5 block text-xs font-bold text-[var(--muted)]">
+                                        {quantityLabel(
+                                          item.quantity,
+                                          item.unit,
+                                        )}{' '}
+                                        available
                                       </span>
                                     </span>
 
-                                    <span className="shrink-0 text-sm font-black text-[var(--text)]">
-                                      {money(
-                                        itemPrice(
-                                          item,
-                                        ),
-                                      )}
+                                    <span className="shrink-0 text-right">
+                                      <span className="block text-sm font-black tabular-nums text-[var(--text)]">
+                                        {money(
+                                          itemPrice(
+                                            item,
+                                          ),
+                                        )}
+                                      </span>
+
+                                      <span className="mt-0.5 block text-[10px] font-bold text-[var(--muted)]">
+                                        per{' '}
+                                        {
+                                          item.unit
+                                        }
+                                      </span>
                                     </span>
                                   </button>
                                 ),
@@ -1339,7 +1687,8 @@ export function SaleForm({
             {paymentMethod ===
             'CASH' ? (
               <>
-                {!hasOpenDrawer ? (
+                {received > 0 &&
+                !hasOpenDrawer ? (
                   <div className="flex flex-col gap-2 rounded-lg border border-[var(--danger)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm font-bold text-[var(--danger)]">
                       Open the cash drawer before saving a cash sale.
@@ -1742,14 +2091,20 @@ export function SaleForm({
       <aside className="self-start rounded-xl border border-[var(--border)] bg-[var(--card)] xl:sticky xl:top-4">
         <div className="border-b border-[var(--border)] px-5 py-4">
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
                 Sale summary
               </p>
 
-              <h3 className="mt-1 text-lg font-black text-[var(--text)]">
-                {money(total)}
-              </h3>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="text-sm font-bold text-[var(--muted)]">
+                  Total
+                </span>
+
+                <strong className="text-xl font-black tabular-nums text-[var(--text)]">
+                  {money(total)}
+                </strong>
+              </div>
             </div>
 
             {canGiveDiscount &&
@@ -1924,9 +2279,11 @@ export function SaleForm({
             </span>
 
             <span className="text-sm font-black text-[var(--text)]">
-              {paymentName(
-                paymentMethod,
-              )}
+              {received > 0
+                ? paymentName(
+                    paymentMethod,
+                  )
+                : 'Not paid yet'}
             </span>
           </div>
 
@@ -2006,9 +2363,17 @@ export function SaleForm({
           </div>
         </div>
 
-        {state.error ? (
+        {queuedLocally ? (
+          <div className="border-t border-[var(--border)] px-5 py-3 text-sm font-bold text-[var(--primary)]">
+            Sale saved on this device. It will sync automatically when the connection is available.
+          </div>
+        ) : null}
+
+        {clientError ||
+        state.error ? (
           <div className="border-t border-[var(--border)] px-5 py-3 text-sm font-bold text-[var(--danger)]">
-            {state.error}
+            {clientError ||
+              state.error}
           </div>
         ) : null}
 
@@ -2016,7 +2381,7 @@ export function SaleForm({
           <button
             type="submit"
             disabled={!canSave}
-            className="h-11 w-full rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+            className="h-11 w-full rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:border disabled:border-[var(--border)] disabled:bg-[var(--surface)] disabled:text-[var(--muted)] disabled:opacity-100"
           >
             {submitText()}
           </button>

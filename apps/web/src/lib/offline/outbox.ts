@@ -62,6 +62,32 @@ export async function enqueueOfflineOperation(
   return operation;
 }
 
+export async function getOfflineOperation(
+  operationId: string,
+) {
+  const database =
+    await getOfflineDatabase();
+
+  return database.get(
+    'outbox',
+    operationId,
+  );
+}
+
+export async function removeOfflineOperation(
+  operationId: string,
+) {
+  const database =
+    await getOfflineDatabase();
+
+  await database.delete(
+    'outbox',
+    operationId,
+  );
+
+  emitOutboxChanged();
+}
+
 export async function getSyncableOperations(
   userId: string,
 ) {

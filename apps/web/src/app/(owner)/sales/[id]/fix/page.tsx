@@ -2,6 +2,7 @@ import {
   and,
   asc,
   eq,
+  sql,
 } from 'drizzle-orm';
 import {
   notFound,
@@ -17,6 +18,8 @@ import {
   products,
   saleItems,
   sales,
+  stockArrivals,
+  stockDamages,
 } from '@bloom-kigali/db/schema';
 
 import {
@@ -96,7 +99,45 @@ export default async function SaleFixPage({
           products.sellingPrice,
 
         quantity:
-          products.quantity,
+          sql<number>`
+            (
+              coalesce(
+                (
+                  select sum(
+                    ${stockArrivals.quantityReceived}
+                  )
+                  from ${stockArrivals}
+                  where ${stockArrivals.productId} =
+                    ${products.id}
+                ),
+                0
+              )
+              -
+              coalesce(
+                (
+                  select sum(
+                    ${saleItems.quantity}
+                  )
+                  from ${saleItems}
+                  where ${saleItems.productId} =
+                    ${products.id}
+                ),
+                0
+              )
+              -
+              coalesce(
+                (
+                  select sum(
+                    ${stockDamages.quantityDamaged}
+                  )
+                  from ${stockDamages}
+                  where ${stockDamages.productId} =
+                    ${products.id}
+                ),
+                0
+              )
+            )::int
+          `,
 
         status:
           products.status,

@@ -42,11 +42,17 @@ function money(
     | string
     | number,
 ) {
-  return `RWF ${Number(
-    value,
-  ).toLocaleString(
-    'en-US',
-  )}`;
+  return new Intl.NumberFormat(
+    'en-RW',
+    {
+      maximumFractionDigits:
+        0,
+    },
+  ).format(
+    Number(
+      value || 0,
+    ),
+  );
 }
 
 

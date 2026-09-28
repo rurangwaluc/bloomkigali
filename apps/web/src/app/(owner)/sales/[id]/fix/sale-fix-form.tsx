@@ -91,22 +91,20 @@ type SaleFixFormProps = {
 
 
 function money(
-  value: number,
+  value:
+    | string
+    | number,
 ) {
-  return (
-    'RWF ' +
-    new Intl.NumberFormat(
-      'en-RW',
-      {
-        maximumFractionDigits:
-          0,
-      },
-    ).format(
-      Math.max(
+  return new Intl.NumberFormat(
+    'en-RW',
+    {
+      maximumFractionDigits:
         0,
-        value || 0,
-      ),
-    )
+    },
+  ).format(
+    Number(
+      value || 0,
+    ),
   );
 }
 
@@ -270,7 +268,7 @@ function ProductSearch({
                     </span>
 
                     <span className="shrink-0 text-xs font-bold text-[var(--muted)]">
-                      Stock{' '}
+                      Available{' '}
                       {
                         product.quantity
                       }
@@ -848,7 +846,7 @@ export function SaleFixForm({
 
                           {selected ? (
                             <p className="mt-1 text-[11px] font-bold text-[var(--muted)]">
-                              Current stock{' '}
+                              Available now{' '}
                               {
                                 selected.quantity
                               }

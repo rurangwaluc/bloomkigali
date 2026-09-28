@@ -94,17 +94,21 @@ function roundMoney(
 
 
 function money(
-  value: number,
+  value:
+    | string
+    | number,
 ) {
-  return `RWF ${Number(
-    value || 0,
-  ).toLocaleString(
-    'en-US',
+  return new Intl.NumberFormat(
+    'en-RW',
     {
       maximumFractionDigits:
-        2,
+        0,
     },
-  )}`;
+  ).format(
+    Number(
+      value || 0,
+    ),
+  );
 }
 
 

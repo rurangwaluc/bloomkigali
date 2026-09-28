@@ -3,7 +3,6 @@
 import {
   and,
   eq,
-  gte,
   inArray,
   sql,
 } from 'drizzle-orm';
@@ -31,6 +30,12 @@ import {
   requireUser,
 } from '@/lib/auth/session';
 
+import {
+  getProductLedgerTotals,
+  lockProductLedgers,
+  reconcileProductLedgerQuantity,
+} from './stock-ledger';
+
 
 type InputItem = {
   sourceItemId: string | null;
@@ -49,10 +54,8 @@ type SaleFixItem = {
 
   baseUnitPrice: number;
   unitPrice: number;
-  unitCost: number;
 
   lineTotal: number;
-  profitAmount: number;
 
   priceAdjustedByUserId:
     | string
@@ -500,20 +503,9 @@ async function getSaleFixValues(
               item.unitPrice,
             ),
 
-          unitCost:
-            Number(
-              item.unitCost,
-            ),
-
           lineTotal:
             Number(
               item.lineTotal,
-            ),
-
-          profitAmount:
-            Number(
-              item
-                .profitAmount,
             ),
 
           priceAdjustedByUserId:
@@ -522,104 +514,6 @@ async function getSaleFixValues(
         }),
       ),
   };
-}
-
-
-function allocateDiscount(
-  items: SaleFixItem[],
-  discountAmount: number,
-) {
-  if (
-    discountAmount <= 0
-  ) {
-    return items;
-  }
-
-  const subtotal =
-    items.reduce(
-      (
-        sum,
-        item,
-      ) =>
-        sum +
-        item.lineTotal,
-      0,
-    );
-
-  if (
-    subtotal <= 0
-  ) {
-    return items;
-  }
-
-  const subtotalCents =
-    Math.round(
-      subtotal * 100,
-    );
-
-  const discountCents =
-    Math.round(
-      discountAmount *
-        100,
-    );
-
-  let allocated = 0;
-
-  return items.map(
-    (
-      item,
-      index,
-    ) => {
-      const isLast =
-        index ===
-        items.length - 1;
-
-      let itemDiscountCents:
-        number;
-
-      if (isLast) {
-        itemDiscountCents =
-          discountCents -
-          allocated;
-      } else {
-        itemDiscountCents =
-          Math.round(
-            (
-              discountCents *
-              Math.round(
-                item.lineTotal *
-                  100,
-              )
-            ) /
-              subtotalCents,
-          );
-
-        itemDiscountCents =
-          Math.max(
-            0,
-            Math.min(
-              itemDiscountCents,
-              discountCents -
-                allocated,
-            ),
-          );
-      }
-
-      allocated +=
-        itemDiscountCents;
-
-      return {
-        ...item,
-
-        profitAmount:
-          roundMoney(
-            item.profitAmount -
-              itemDiscountCents /
-                100,
-          ),
-      };
-    },
-  );
 }
 
 
@@ -748,7 +642,7 @@ async function prepareAfterValues(
         ),
     );
 
-  let items =
+  const items =
     inputItems.map(
       (input) => {
         const product =
@@ -811,15 +705,6 @@ async function prepareAfterValues(
                   .sellingPrice,
               );
 
-        const unitCost =
-          sameProduct &&
-          source
-            ? source.unitCost
-            : Number(
-                product
-                  .buyingPrice,
-              );
-
         if (
           baseUnitPrice <= 0
         ) {
@@ -875,7 +760,10 @@ async function prepareAfterValues(
             product.id,
 
           itemName:
-            product.name,
+            sameProduct &&
+            source
+              ? source.itemName
+              : product.name,
 
           quantity:
             input.quantity,
@@ -890,21 +778,7 @@ async function prepareAfterValues(
               input.unitPrice,
             ),
 
-          unitCost:
-            roundMoney(
-              unitCost,
-            ),
-
           lineTotal,
-
-          profitAmount:
-            roundMoney(
-              (
-                input.unitPrice -
-                unitCost
-              ) *
-                input.quantity,
-            ),
 
           priceAdjustedByUserId,
         };
@@ -956,12 +830,6 @@ async function prepareAfterValues(
       'Enter why the discount was given.',
     );
   }
-
-  items =
-    allocateDiscount(
-      items,
-      discountAmount,
-    );
 
   const totalAmount =
     roundMoney(
@@ -1243,6 +1111,13 @@ async function applySaleFix(
 ) {
   await db.transaction(
     async (tx) => {
+      await tx.execute(sql`
+        SELECT id
+        FROM sales
+        WHERE id = ${saleId}
+        FOR UPDATE
+      `);
+
       const [currentSale] =
         await tx
           .select()
@@ -1297,8 +1172,11 @@ async function applySaleFix(
       }
 
       /*
-       * Work out how much stock each product should gain
-       * or lose compared with the original saved sale.
+       * The currently saved sale items are already counted
+       * inside Sold.
+       *
+       * Lock all affected Product ledgers and calculate what
+       * Remaining would become after this correction.
        */
       const oldQuantity =
         new Map<
@@ -1342,13 +1220,51 @@ async function applySaleFix(
         );
       }
 
-      const productIds =
-        [
-          ...new Set([
-            ...oldQuantity.keys(),
-            ...newQuantity.keys(),
-          ]),
-        ];
+      const productIds = [
+        ...new Set([
+          ...oldQuantity.keys(),
+          ...newQuantity.keys(),
+        ]),
+      ];
+
+      await lockProductLedgers(
+        tx,
+        productIds,
+      );
+
+      const lockedProducts =
+        productIds.length > 0
+          ? await tx
+              .select({
+                id:
+                  products.id,
+
+                name:
+                  products.name,
+
+                status:
+                  products.status,
+
+                itemType:
+                  products.itemType,
+              })
+              .from(products)
+              .where(
+                inArray(
+                  products.id,
+                  productIds,
+                ),
+              )
+          : [];
+
+      if (
+        lockedProducts.length !==
+        productIds.length
+      ) {
+        throw new SaleFixError(
+          'One product was not found.',
+        );
+      }
 
       for (
         const productId of
@@ -1364,109 +1280,61 @@ async function applySaleFix(
             productId,
           ) || 0;
 
-        const difference =
-          newQty -
-          oldQty;
+        const product =
+          lockedProducts.find(
+            (current) =>
+              current.id ===
+              productId,
+          );
 
         if (
-          difference > 0
+          !product ||
+          product.itemType !==
+            'PRODUCT'
         ) {
-          /*
-           * If this product was already part of the saved
-           * sale, an archived status must not stop us from
-           * correcting its historical quantity.
-           *
-           * A newly introduced product must be active.
-           */
-          const stockWhere =
-            oldQty > 0
-              ? and(
-                  eq(
-                    products.id,
-                    productId,
-                  ),
-                  gte(
-                    products.quantity,
-                    difference,
-                  ),
-                )
-              : and(
-                  eq(
-                    products.id,
-                    productId,
-                  ),
-                  eq(
-                    products.status,
-                    'ACTIVE',
-                  ),
-                  gte(
-                    products.quantity,
-                    difference,
-                  ),
-                );
-
-          const updated =
-            await tx
-              .update(products)
-              .set({
-                quantity:
-                  sql`${products.quantity} - ${difference}`,
-
-                updatedAt:
-                  new Date(),
-              })
-              .where(
-                stockWhere,
-              )
-              .returning({
-                id:
-                  products.id,
-              });
-
-          if (
-            updated.length ===
-            0
-          ) {
-            throw new SaleFixError(
-              'There is not enough stock for one of the corrected items.',
-            );
-          }
+          throw new SaleFixError(
+            'One product is not available.',
+          );
         }
 
+        /*
+         * Existing historical products may be archived.
+         * A newly introduced Product must still be active
+         * when the correction is actually applied.
+         */
         if (
-          difference < 0
+          oldQty === 0 &&
+          newQty > 0 &&
+          product.status !==
+            'ACTIVE'
         ) {
-          const restored =
-            await tx
-              .update(products)
-              .set({
-                quantity:
-                  sql`${products.quantity} + ${Math.abs(
-                    difference,
-                  )}`,
+          throw new SaleFixError(
+            `${product.name} is no longer available.`,
+          );
+        }
 
-                updatedAt:
-                  new Date(),
-              })
-              .where(
-                eq(
-                  products.id,
-                  productId,
-                ),
-              )
-              .returning({
-                id:
-                  products.id,
-              });
+        const ledger =
+          await getProductLedgerTotals(
+            tx,
+            productId,
+          );
 
-          if (
-            restored.length ===
-            0
-          ) {
-            throw new SaleFixError(
-              'One original product was not found.',
-            );
-          }
+        /*
+         * Current sale quantity is already inside ledger.sold,
+         * so add the old quantity back before applying the
+         * corrected quantity.
+         */
+        const finalRemaining =
+          ledger.remaining +
+          oldQty -
+          newQty;
+
+        if (
+          finalRemaining < 0
+        ) {
+          throw new SaleFixError(
+            `There is not enough stock for ${product.name}.`,
+          );
         }
       }
 
@@ -1513,20 +1381,9 @@ async function applySaleFix(
                   item.unitPrice,
                 ),
 
-              unitCost:
-                toMoney(
-                  item.unitCost,
-                ),
-
               lineTotal:
                 toMoney(
                   item.lineTotal,
-                ),
-
-              profitAmount:
-                toMoney(
-                  item
-                    .profitAmount,
                 ),
 
               priceAdjustedByUserId:
@@ -1535,6 +1392,16 @@ async function applySaleFix(
             }),
           ),
         );
+
+      for (
+        const productId of
+        productIds
+      ) {
+        await reconcileProductLedgerQuantity(
+          tx,
+          productId,
+        );
+      }
 
       const now =
         new Date();
