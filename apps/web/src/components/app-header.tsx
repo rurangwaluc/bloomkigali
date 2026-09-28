@@ -7,6 +7,11 @@ import {
   Search,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+
+import {
+  useEffect,
+  useState,
+} from 'react';
 import { logoutAction } from '@/lib/auth/actions';
 import {
   OwnerRequestNotifier,
@@ -236,6 +241,53 @@ export function AppHeader({
 }: AppHeaderProps) {
   const pathname = usePathname();
 
+  const [
+    requestCount,
+    setRequestCount,
+  ] = useState(
+    pendingRequestCount,
+  );
+
+  useEffect(() => {
+    function handleRequestUpdate(
+      event: Event,
+    ) {
+      const detail = (
+        event as CustomEvent<{
+          count?: unknown;
+        }>
+      ).detail;
+
+      const nextCount =
+        Number(
+          detail?.count || 0,
+        );
+
+      setRequestCount(
+        Number.isFinite(
+          nextCount,
+        )
+          ? Math.max(
+              0,
+              nextCount,
+            )
+          : 0,
+      );
+    }
+
+    window.addEventListener(
+      'mamas-pride:requests-updated',
+      handleRequestUpdate,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'mamas-pride:requests-updated',
+        handleRequestUpdate,
+      );
+    };
+  }, []);
+
   const page = getPageName(pathname);
 
   const firstName =
@@ -279,16 +331,27 @@ export function AppHeader({
             <Link
               href="/requests"
               aria-label={
-                pendingRequestCount > 0
-                  ? `${pendingRequestCount} requests waiting`
+                requestCount > 0
+                  ? `${requestCount} ${
+                    requestCount === 1
+                      ? 'request'
+                      : 'requests'
+                  } waiting`
                   : 'Requests'
               }
               className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-transparent text-[var(--text)] transition hover:bg-[var(--surface)]"
             >
               <Bell className="h-[18px] w-[18px]" />
 
-              {pendingRequestCount > 0 ? (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--primary)]" />
+              {requestCount > 0 ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-1.5 -top-1.5 inline-flex h-[19px] min-w-[19px] items-center justify-center rounded-full border-2 border-[var(--background)] bg-[var(--primary)] px-1 text-[9px] font-black leading-none text-white tabular-nums"
+                >
+                  {requestCount > 99
+                    ? '99+'
+                    : requestCount}
+                </span>
               ) : null}
             </Link>
           ) : null}
