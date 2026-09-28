@@ -49,7 +49,7 @@ const ORDER_KEY =
 function money(
   value: number,
 ) {
-  return `RWF ${new Intl.NumberFormat(
+  return `${new Intl.NumberFormat(
     'en-RW',
     {
       maximumFractionDigits: 0,
@@ -520,7 +520,7 @@ export function StockTable({
     <>
       <section className="hidden rounded-xl border border-[var(--border)] bg-[var(--card)] xl:block">
         <div className="overflow-x-auto rounded-xl">
-          <table className="w-full border-collapse text-left text-xs">
+          <table className="w-full border-collapse text-left text-xs [&_th]:border-b [&_th]:border-r [&_th]:border-[var(--border)] [&_td]:border-b [&_td]:border-r [&_td]:border-[var(--border)] [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
             <thead className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--surface)] text-[10px] font-black uppercase tracking-[0.08em] text-[var(--muted)]">
               <tr>
                 <th className="w-10 px-2 py-3" />

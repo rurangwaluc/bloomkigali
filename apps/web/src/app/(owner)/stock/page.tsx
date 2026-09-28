@@ -70,7 +70,7 @@ type Period =
 function money(
   value: number,
 ) {
-  return `RWF ${new Intl.NumberFormat(
+  return `${new Intl.NumberFormat(
     'en-RW',
     {
       maximumFractionDigits: 0,
