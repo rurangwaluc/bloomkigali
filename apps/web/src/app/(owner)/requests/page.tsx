@@ -481,6 +481,40 @@ function stockChanges(
   const rows:
     ChangeRow[] = [];
 
+  const beforeProduct =
+    simpleText(
+      before.productName,
+    );
+
+  const afterProduct =
+    simpleText(
+      after.productName,
+    );
+
+  if (
+    (
+      typeof before.productId ===
+        'string' &&
+      typeof after.productId ===
+        'string' &&
+      before.productId !==
+        after.productId
+    ) ||
+    beforeProduct !==
+      afterProduct
+  ) {
+    rows.push({
+      label:
+        'Product',
+
+      before:
+        beforeProduct,
+
+      after:
+        afterProduct,
+    });
+  }
+
   if (
     Number(
       before.quantityReceived,
@@ -1218,6 +1252,10 @@ export default async function RequestsPage({
                 request.targetType ===
                 'STOCK_DAMAGE';
 
+              const isReceipt =
+                request.targetType ===
+                'STOCK_RECEIPT';
+
               const requestExpense =
                 isExpense
                   ? {
@@ -1357,7 +1395,9 @@ export default async function RequestsPage({
                                 ? 'asked to fix a sale'
                                 : isDamage
                                   ? 'asked to correct damaged stock'
-                                  : 'asked to fix stock'}
+                                  : isReceipt
+                                    ? 'asked to correct a stock receipt'
+                                    : 'asked to fix stock'}
                         </p>
 
                         {requestExpense ? (
@@ -1521,6 +1561,16 @@ export default async function RequestsPage({
                         className="col-span-2 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[var(--border)] px-5 text-sm font-black text-[var(--text)] transition hover:border-[var(--primary)] sm:col-span-1 sm:w-auto"
                       >
                         Open sale
+                      </Link>
+                    ) : null}
+
+                    {isReceipt ? (
+                      <Link
+                        href={`/stock/received/${request.targetId}/fix`}
+                        prefetch
+                        className="col-span-2 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[var(--border)] px-5 text-sm font-black text-[var(--text)] transition hover:border-[var(--primary)] sm:col-span-1 sm:w-auto"
+                      >
+                        Open receipt
                       </Link>
                     ) : null}
 

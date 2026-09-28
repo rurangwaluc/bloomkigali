@@ -7,6 +7,7 @@ import {
 import {
   and,
   eq,
+  or,
 } from 'drizzle-orm';
 
 import {
@@ -101,6 +102,9 @@ export default async function FixStockPage({
         id:
           stockArrivals.id,
 
+        productId:
+          stockArrivals.productId,
+
         productName:
           stockArrivals.productName,
 
@@ -144,6 +148,46 @@ export default async function FixStockPage({
   if (!receipt) {
     notFound();
   }
+
+  const correctionProducts =
+    await db
+      .select({
+        id:
+          products.id,
+
+        name:
+          products.name,
+
+        category:
+          products.category,
+
+        unit:
+          products.unit,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(
+            products.itemType,
+            'PRODUCT',
+          ),
+
+          or(
+            eq(
+              products.status,
+              'ACTIVE',
+            ),
+
+            eq(
+              products.id,
+              receipt.productId,
+            ),
+          ),
+        ),
+      )
+      .orderBy(
+        products.name,
+      );
 
   const [
     pendingRequest,
@@ -268,6 +312,54 @@ export default async function FixStockPage({
               receipt.id
             }
           />
+
+          <div>
+            <label
+              htmlFor="productId"
+              className="text-sm font-black text-[var(--text)]"
+            >
+              Product
+            </label>
+
+            <select
+              id="productId"
+              name="productId"
+              required
+              defaultValue={
+                receipt.productId
+              }
+              className="mt-2 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm font-bold text-[var(--text)] outline-none focus:border-[var(--primary)]"
+            >
+              {correctionProducts.map(
+                (product) => (
+                  <option
+                    key={
+                      product.id
+                    }
+                    value={
+                      product.id
+                    }
+                  >
+                    {product.name}
+                    {' — '}
+                    {product.category}
+                    {' / '}
+                    {product.unit}
+                  </option>
+                ),
+              )}
+            </select>
+
+            <p className="mt-1.5 text-xs font-bold leading-5 text-[var(--muted)]">
+              Change this only if
+              the receipt was entered
+              under the wrong
+              product. Both stock
+              balances will be
+              recalculated when the
+              correction is applied.
+            </p>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
