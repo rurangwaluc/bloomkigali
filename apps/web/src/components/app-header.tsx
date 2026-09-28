@@ -117,6 +117,17 @@ function getPageName(pathname: string) {
     };
   }
 
+  if (
+    pathname.startsWith(
+      '/stock/damaged/',
+    )
+  ) {
+    return {
+      eyebrow: 'Stock',
+      title: 'Correct damage',
+    };
+  }
+
   if (pathname === '/stock/damage') {
     return {
       eyebrow: 'Stock',

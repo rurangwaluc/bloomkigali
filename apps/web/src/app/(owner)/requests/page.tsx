@@ -18,6 +18,10 @@ import { requireOwner } from '@/lib/auth/session';
 import {
   approveStockFixRequestAction,
 } from '@/lib/stock/fixes';
+
+import {
+  approveStockDamageFixRequestAction,
+} from '@/lib/stock/damage-fixes';
 import {
   approveProductChangeRequestAction,
 } from '@/lib/products/actions';
@@ -474,7 +478,8 @@ function stockChanges(
   before: Record<string, unknown>,
   after: Record<string, unknown>,
 ): ChangeRow[] {
-  const rows: ChangeRow[] = [];
+  const rows:
+    ChangeRow[] = [];
 
   if (
     Number(
@@ -487,59 +492,177 @@ function stockChanges(
     rows.push({
       label:
         'Quantity received',
-      before: String(
-        Number(
-          before.quantityReceived,
-        ),
-      ),
-      after: String(
-        Number(
-          after.quantityReceived,
-        ),
-      ),
-    });
-  }
 
-  if (
-    Number(before.buyingPrice) !==
-    Number(after.buyingPrice)
-  ) {
-    rows.push({
-      label: 'Buying price',
       before:
-        formatMoney(
-          before.buyingPrice,
+        String(
+          Number(
+            before.quantityReceived,
+          ),
         ),
+
       after:
-        formatMoney(
-          after.buyingPrice,
+        String(
+          Number(
+            after.quantityReceived,
+          ),
         ),
     });
   }
 
+  const fields = [
+    {
+      key:
+        'supplierName',
+
+      label:
+        'Supplier',
+    },
+
+    {
+      key:
+        'reference',
+
+      label:
+        'Reference',
+    },
+
+    {
+      key:
+        'notes',
+
+      label:
+        'Notes',
+    },
+  ] as const;
+
+  for (
+    const field
+    of fields
+  ) {
+    const beforeValue =
+      optionalText(
+        before[
+          field.key
+        ],
+      );
+
+    const afterValue =
+      optionalText(
+        after[
+          field.key
+        ],
+      );
+
+    if (
+      beforeValue !==
+      afterValue
+    ) {
+      rows.push({
+        label:
+          field.label,
+
+        before:
+          beforeValue,
+
+        after:
+          afterValue,
+      });
+    }
+  }
+
+  return rows;
+}
+
+
+function damageChanges(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): ChangeRow[] {
+  const rows:
+    ChangeRow[] = [];
+
   if (
-    optionalText(
-      before.supplierName,
+    Number(
+      before.quantityDamaged,
     ) !==
-    optionalText(
-      after.supplierName,
+    Number(
+      after.quantityDamaged,
     )
   ) {
     rows.push({
-      label: 'Supplier',
+      label:
+        'Quantity damaged',
+
       before:
-        optionalText(
-          before.supplierName,
+        String(
+          Number(
+            before.quantityDamaged,
+          ),
         ),
+
       after:
-        optionalText(
-          after.supplierName,
+        String(
+          Number(
+            after.quantityDamaged,
+          ),
         ),
+    });
+  }
+
+  const beforeReason =
+    optionalText(
+      before.damageReason,
+    );
+
+  const afterReason =
+    optionalText(
+      after.damageReason,
+    );
+
+  if (
+    beforeReason !==
+    afterReason
+  ) {
+    rows.push({
+      label:
+        'Damage reason',
+
+      before:
+        beforeReason,
+
+      after:
+        afterReason,
+    });
+  }
+
+  const beforeNotes =
+    optionalText(
+      before.notes,
+    );
+
+  const afterNotes =
+    optionalText(
+      after.notes,
+    );
+
+  if (
+    beforeNotes !==
+    afterNotes
+  ) {
+    rows.push({
+      label: 'Notes',
+
+      before:
+        beforeNotes,
+
+      after:
+        afterNotes,
     });
   }
 
   return rows;
 }
+
 
 function productChanges(
   before: Record<string, unknown>,
@@ -557,28 +680,8 @@ function productChanges(
       format: simpleText,
     },
     {
-      key: 'customerType',
-      label: 'For',
-      format: simpleText,
-    },
-    {
-      key: 'ageStage',
-      label: 'Age / stage',
-      format: optionalText,
-    },
-    {
-      key: 'size',
-      label: 'Size',
-      format: optionalText,
-    },
-    {
-      key: 'color',
-      label: 'Color',
-      format: optionalText,
-    },
-    {
       key: 'unit',
-      label: 'Count by',
+      label: 'Unit',
       format: unitText,
     },
     {
@@ -588,8 +691,7 @@ function productChanges(
     },
     {
       key: 'minQuantity',
-      label:
-        'Low-stock warning',
+      label: 'Low-stock level',
       format: simpleText,
     },
     {
@@ -620,9 +722,12 @@ function productChanges(
 
       return [
         {
-          label: field.label,
+          label:
+            field.label,
+
           before:
             beforeValue,
+
           after:
             afterValue,
         },
@@ -630,6 +735,7 @@ function productChanges(
     },
   );
 }
+
 
 function saleItemText(
   value: unknown,
@@ -881,6 +987,10 @@ export default async function RequestsPage({
           ),
           eq(
             corrections.targetType,
+            'STOCK_DAMAGE',
+          ),
+          eq(
+            corrections.targetType,
             'PRODUCT',
           ),
           eq(
@@ -1104,6 +1214,10 @@ export default async function RequestsPage({
                 request.targetType ===
                 'SALE_PAYMENT';
 
+              const isDamage =
+                request.targetType ===
+                'STOCK_DAMAGE';
+
               const requestExpense =
                 isExpense
                   ? {
@@ -1192,10 +1306,15 @@ export default async function RequestsPage({
                           request.beforeValues,
                           request.afterValues,
                         )
-                      : stockChanges(
-                          request.beforeValues,
-                          request.afterValues,
-                        );
+                      : isDamage
+                        ? damageChanges(
+                            request.beforeValues,
+                            request.afterValues,
+                          )
+                        : stockChanges(
+                            request.beforeValues,
+                            request.afterValues,
+                          );
 
               const approveAction =
                 isProduct
@@ -1208,7 +1327,9 @@ export default async function RequestsPage({
                     ? approvePaymentFixRequestAction
                     : isSale
                       ? approveSaleFixRequestAction
-                      : approveStockFixRequestAction;
+                      : isDamage
+                        ? approveStockDamageFixRequestAction
+                        : approveStockFixRequestAction;
 
               return (
                 <article
@@ -1234,7 +1355,9 @@ export default async function RequestsPage({
                                 : 'asked to fix a payment'
                               : isSale
                                 ? 'asked to fix a sale'
-                                : 'asked to fix stock'}
+                                : isDamage
+                                  ? 'asked to correct damaged stock'
+                                  : 'asked to fix stock'}
                         </p>
 
                         {requestExpense ? (
@@ -1398,6 +1521,16 @@ export default async function RequestsPage({
                         className="col-span-2 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[var(--border)] px-5 text-sm font-black text-[var(--text)] transition hover:border-[var(--primary)] sm:col-span-1 sm:w-auto"
                       >
                         Open sale
+                      </Link>
+                    ) : null}
+
+                    {isDamage ? (
+                      <Link
+                        href={`/stock/damaged/${request.targetId}/fix`}
+                        prefetch
+                        className="col-span-2 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[var(--border)] px-5 text-sm font-black text-[var(--text)] transition hover:border-[var(--primary)] sm:col-span-1 sm:w-auto"
+                      >
+                        Open damage
                       </Link>
                     ) : null}
 

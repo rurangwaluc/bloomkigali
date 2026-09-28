@@ -766,7 +766,7 @@ export default async function StockHistoryPage({
                 return (
                   <article
                     key={`damaged-${entry.id}`}
-                    className="grid gap-3 px-4 py-4 sm:grid-cols-[120px_minmax(0,1fr)] sm:px-6"
+                    className="grid gap-3 px-4 py-4 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center sm:px-6"
                   >
                     <div>
                       <p className="text-xs font-black text-[var(--danger)]">
@@ -804,6 +804,14 @@ export default async function StockHistoryPage({
                         </p>
                       ) : null}
                     </div>
+
+                    <Link
+                      href={`/stock/damaged/${entry.id}/fix`}
+                      prefetch
+                      className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--border)] px-3 text-xs font-black text-[var(--text)] transition hover:border-[var(--primary)]"
+                    >
+                      Correct damage
+                    </Link>
                   </article>
                 );
               },

@@ -133,6 +133,16 @@ export async function rejectRequestAction(
     );
   }
 
+  if (
+    request &&
+    request.targetType ===
+      'STOCK_DAMAGE'
+  ) {
+    revalidatePath(
+      `/stock/damaged/${request.targetId}/fix`,
+    );
+  }
+
   revalidatePath('/requests');
   revalidatePath('/products');
   revalidatePath('/stock');
