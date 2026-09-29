@@ -541,6 +541,45 @@ export function SaleFixForm({
         paidAmount,
     );
 
+  const originalCustomerName =
+    initialCustomerId
+      ? customers.find(
+          (customer) =>
+            customer.id ===
+            initialCustomerId,
+        )?.name ||
+        'Customer'
+      : 'Walk-in customer';
+
+  const correctedCustomerName =
+    selectedCustomerId
+      ? customers.find(
+          (customer) =>
+            customer.id ===
+            selectedCustomerId,
+        )?.name ||
+        'Customer'
+      : 'Walk-in customer';
+
+  const originalSubtotal =
+    initialRows.reduce(
+      (sum, row) =>
+        sum +
+        row.quantity *
+          row.unitPrice,
+      0,
+    );
+
+  const originalTotal =
+    Math.max(
+      0,
+      originalSubtotal -
+        Math.max(
+          0,
+          initialDiscountAmount,
+        ),
+    );
+
   const totalBelowPaid =
     total <
     paidAmount;
@@ -621,16 +660,199 @@ export function SaleFixForm({
         </div>
       ) : null}
 
+      <header className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-5 py-5 sm:px-6">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
+          Sale correction
+        </p>
+
+        <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-[var(--text)]">
+          {isOwner
+            ? 'Fix mistake'
+            : 'Request a correction'}
+        </h2>
+
+        <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-[var(--muted)]">
+          Compare the recorded sale with the correction before saving.
+          Payment is not changed here.
+        </p>
+      </header>
+
       <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <div className="border-b border-[var(--border)] px-5 py-4 sm:px-6">
-          <h2 className="text-lg font-black text-[var(--text)]">
-            {isOwner
-              ? 'Fix mistake'
-              : 'Ask owner to fix'}
-          </h2>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
+            Correction review
+          </p>
 
-          <p className="mt-1 text-sm font-bold text-[var(--muted)]">
-            Correct what was recorded on the sale. Payment is not changed here.
+          <h3 className="mt-1 text-lg font-black text-[var(--text)]">
+            Recorded and corrected sale
+          </h3>
+        </div>
+
+        <div className="grid lg:grid-cols-2">
+          <div className="px-5 py-5 sm:px-6">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+              Recorded
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <div className="flex items-start justify-between gap-5">
+                <span className="text-sm font-semibold text-[var(--muted)]">
+                  Customer
+                </span>
+
+                <strong className="text-right text-sm font-black text-[var(--text)]">
+                  {originalCustomerName}
+                </strong>
+              </div>
+
+              <div className="border-t border-[var(--border)] pt-4">
+                <p className="text-xs font-black text-[var(--muted)]">
+                  Items
+                </p>
+
+                <div className="mt-2 space-y-2">
+                  {initialRows.map(
+                    (row) => (
+                      <div
+                        key={row.sourceItemId}
+                        className="flex items-start justify-between gap-5 text-sm"
+                      >
+                        <span className="min-w-0 font-semibold text-[var(--text)]">
+                          {row.itemName}{' '}
+                          ×{row.quantity}
+                          <span className="ml-2 text-xs font-semibold text-[var(--muted)]">
+                            @ {money(
+                              row.unitPrice,
+                            )}
+                          </span>
+                        </span>
+
+                        <strong className="shrink-0 tabular-nums text-[var(--text)]">
+                          {money(
+                            row.quantity *
+                              row.unitPrice,
+                          )}
+                        </strong>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t border-[var(--border)] pt-4 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Total
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    originalTotal,
+                  )}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--border)] px-5 py-5 sm:px-6 lg:border-l lg:border-t-0">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
+              Corrected
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <div className="flex items-start justify-between gap-5">
+                <span className="text-sm font-semibold text-[var(--muted)]">
+                  Customer
+                </span>
+
+                <strong className="text-right text-sm font-black text-[var(--text)]">
+                  {correctedCustomerName}
+                </strong>
+              </div>
+
+              <div className="border-t border-[var(--border)] pt-4">
+                <p className="text-xs font-black text-[var(--muted)]">
+                  Items
+                </p>
+
+                <div className="mt-2 space-y-2">
+                  {rows.map(
+                    (row) => {
+                      const product =
+                        products.find(
+                          (current) =>
+                            current.id ===
+                            row.productId,
+                        );
+
+                      const quantity =
+                        numberValue(
+                          row.quantity,
+                        );
+
+                      const unitPrice =
+                        numberValue(
+                          row.unitPrice,
+                        );
+
+                      return (
+                        <div
+                          key={row.key}
+                          className="flex items-start justify-between gap-5 text-sm"
+                        >
+                          <span className="min-w-0 font-semibold text-[var(--text)]">
+                            {product?.name ||
+                              'Choose a product'}{' '}
+                            ×{quantity}
+                            <span className="ml-2 text-xs font-semibold text-[var(--muted)]">
+                              @ {money(
+                                unitPrice,
+                              )}
+                            </span>
+                          </span>
+
+                          <strong className="shrink-0 tabular-nums text-[var(--text)]">
+                            {money(
+                              quantity *
+                                unitPrice,
+                            )}
+                          </strong>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t border-[var(--border)] pt-4 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Total
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    total,
+                  )}
+                </strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <div className="border-b border-[var(--border)] px-5 py-4 sm:px-6">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
+            Correction
+          </p>
+
+          <h3 className="mt-1 text-lg font-black text-[var(--text)]">
+            Make the correction
+          </h3>
+
+          <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
+            {isOwner
+              ? 'Change only what was recorded incorrectly.'
+              : 'Change what was recorded incorrectly. The owner will review your request.'}
           </p>
         </div>
 
@@ -736,6 +958,28 @@ export function SaleFixForm({
                         product.id ===
                         row.productId,
                     );
+
+                  const originalQuantityForProduct =
+                    selected
+                      ? initialRows
+                          .filter(
+                            (original) =>
+                              original.productId ===
+                              selected.id,
+                          )
+                          .reduce(
+                            (sum, original) =>
+                              sum +
+                              original.quantity,
+                            0,
+                          )
+                      : 0;
+
+                  const availableForCorrection =
+                    selected
+                      ? selected.quantity +
+                        originalQuantityForProduct
+                      : 0;
 
                   const lineTotal =
                     numberValue(
@@ -846,9 +1090,9 @@ export function SaleFixForm({
 
                           {selected ? (
                             <p className="mt-1 text-[11px] font-bold text-[var(--muted)]">
-                              Available now{' '}
+                              Available for this correction{' '}
                               {
-                                selected.quantity
+                                availableForCorrection
                               }
                             </p>
                           ) : null}
@@ -1077,14 +1321,14 @@ export function SaleFixForm({
             disabled={
               !canSubmit
             }
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-6 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-6 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:border disabled:border-[var(--border)] disabled:bg-[var(--surface)] disabled:text-[var(--muted)] disabled:opacity-100"
           >
             {hasPendingRequest
               ? isOwner
                 ? 'Review request first'
                 : 'Request sent'
               : isOwner
-                ? 'Save fix'
+                ? 'Save correction'
                 : 'Send request'}
           </button>
         </div>

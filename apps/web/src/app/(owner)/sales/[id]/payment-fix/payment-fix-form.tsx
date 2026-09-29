@@ -84,6 +84,19 @@ const methods:
   ];
 
 
+function paymentMethodName(
+  value: PaymentMethod,
+) {
+  return (
+    methods.find(
+      (method) =>
+        method.value === value,
+    )?.label ||
+    value
+  );
+}
+
+
 function roundMoney(
   value: number,
 ) {
@@ -146,7 +159,7 @@ function SubmitButton({
         disabled ||
         pending
       }
-      className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:border disabled:border-[var(--border)] disabled:bg-[var(--surface)] disabled:text-[var(--muted)] disabled:opacity-100"
     >
       {pending
         ? 'Saving...'
@@ -426,14 +439,150 @@ export default function PaymentFixForm({
         </div>
       ) : null}
 
+      <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <div className="border-b border-[var(--border)] px-5 py-4 sm:px-6">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
+            Correction review
+          </p>
+
+          <h3 className="mt-1 text-lg font-black text-[var(--text)]">
+            Recorded and corrected payment
+          </h3>
+        </div>
+
+        <div className="grid lg:grid-cols-2">
+          <div className="px-5 py-5 sm:px-6">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+              Recorded
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Method
+                </span>
+
+                <strong className="text-right text-[var(--text)]">
+                  {paymentMethodName(
+                    initial.paymentMethod,
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Received
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    initial.receivedAmount,
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  {initial.paymentMethod ===
+                  'CASH'
+                    ? 'Change returned'
+                    : 'Refunded'}
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    initial.returnedAmount,
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Extra kept
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    initial.extraKeptAmount,
+                  )}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--border)] px-5 py-5 sm:px-6 lg:border-l lg:border-t-0">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
+              Corrected
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Method
+                </span>
+
+                <strong className="text-right text-[var(--text)]">
+                  {paymentMethodName(
+                    paymentMethod,
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Received
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    received,
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  {paymentMethod ===
+                  'CASH'
+                    ? 'Change returned'
+                    : 'Refunded'}
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    returned,
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex items-center justify-between gap-5 text-sm">
+                <span className="font-semibold text-[var(--muted)]">
+                  Extra kept
+                </span>
+
+                <strong className="tabular-nums text-[var(--text)]">
+                  {money(
+                    extra,
+                  )}
+                </strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
         <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
-          Payment
+          Correction
         </p>
 
         <h3 className="mt-1 text-xl font-black text-[var(--text)]">
-          What should this payment have been?
+          Correct the payment
         </h3>
+
+        <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
+          Edit only the payment values that were recorded incorrectly.
+        </p>
 
         <div className="mt-5">
           <p className="text-xs font-black text-[var(--muted)]">
@@ -650,7 +799,7 @@ export default function PaymentFixForm({
       <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
         <label className="block">
           <span className="text-xs font-black text-[var(--muted)]">
-            What was entered wrong?
+            Why is this correction needed?
           </span>
 
           <textarea
@@ -684,7 +833,7 @@ export default function PaymentFixForm({
             label={
               role ===
               'OWNER'
-                ? 'Save fix'
+                ? 'Save correction'
                 : 'Send request'
             }
           />
