@@ -369,12 +369,14 @@ export default async function DebtDetailPage({
             <div className="mt-4">
               <DebtPaymentForm
                 saleId={sale.id}
+                userId={user.id}
                 balanceAmount={
                   sale.balanceAmount
                 }
-                hasOpenDrawer={Boolean(
-                  openDrawer,
-                )}
+                cashDrawerId={
+                  openDrawer?.id ??
+                  null
+                }
               />
             </div>
           </aside>

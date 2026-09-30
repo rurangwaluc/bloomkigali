@@ -33,6 +33,11 @@ import {
   SaleSyncError,
 } from '@/lib/sales/sync-server';
 
+import {
+  DebtPaymentSyncError,
+  executeDebtPaymentSync,
+} from '@/lib/debts/sync-server';
+
 export const runtime =
   'nodejs';
 
@@ -326,6 +331,47 @@ export async function POST(
 
     if (
       body.kind ===
+      'DEBT_PAYMENT'
+    ) {
+      const execution =
+        await runIdempotentOfflineOperation({
+          operationId:
+            body.operationId,
+
+          userId:
+            user.id,
+
+          kind:
+            body.kind,
+
+          payload:
+            body.payload,
+
+          clientCreatedAt,
+
+          execute:
+            async (tx) =>
+              executeDebtPaymentSync(
+                tx,
+                user,
+                body.payload,
+                clientCreatedAt,
+              ),
+        });
+
+      return NextResponse.json({
+        ok: true,
+
+        replayed:
+          execution.replayed,
+
+        result:
+          execution.result,
+      });
+    }
+
+    if (
+      body.kind ===
       'SALE_CREATE'
     ) {
       const execution =
@@ -376,7 +422,9 @@ export async function POST(
       error instanceof
         StockSyncError ||
       error instanceof
-        SaleSyncError
+        SaleSyncError ||
+      error instanceof
+        DebtPaymentSyncError
     ) {
       return errorResponse(
         error.message,
