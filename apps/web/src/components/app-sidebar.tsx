@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   Boxes,
+  CircleDollarSign,
   House,
   Menu,
   Package,
@@ -53,6 +54,12 @@ const navigation = [
     label: 'Customers',
     href: '/customers',
     icon: Users,
+    roles: ['OWNER', 'EMPLOYEE'],
+  },
+  {
+    label: 'Debts',
+    href: '/debts',
+    icon: CircleDollarSign,
     roles: ['OWNER', 'EMPLOYEE'],
   },
   {
