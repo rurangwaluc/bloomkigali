@@ -2,8 +2,10 @@
 
 import {
   useActionState,
-  useState,
+  useEffect,
+  useRef,
 } from 'react';
+
 import { recordDebtPaymentAction } from '@/lib/debts/actions';
 
 type DebtPaymentFormProps = {
@@ -12,17 +14,16 @@ type DebtPaymentFormProps = {
   hasOpenDrawer: boolean;
 };
 
-type PaymentMethod =
-  | 'CASH'
-  | 'MOBILE_MONEY'
-  | 'BANK'
-  | 'CARD';
-
 export function DebtPaymentForm({
   saleId,
   balanceAmount,
   hasOpenDrawer,
 }: DebtPaymentFormProps) {
+  const formRef =
+    useRef<HTMLFormElement>(
+      null,
+    );
+
   const [
     state,
     action,
@@ -32,21 +33,17 @@ export function DebtPaymentForm({
     {},
   );
 
-  const [
-    paymentMethod,
-    setPaymentMethod,
-  ] =
-    useState<PaymentMethod>(
-      'CASH',
-    );
+  useEffect(() => {
+    if (!state.success) {
+      return;
+    }
 
-  const isCashPaymentLocked =
-    paymentMethod ===
-      'CASH' &&
-    !hasOpenDrawer;
+    formRef.current?.reset();
+  }, [state.success]);
 
   return (
     <form
+      ref={formRef}
       action={action}
       className="space-y-4"
     >
@@ -73,8 +70,8 @@ export function DebtPaymentForm({
           step="0.01"
           max={balanceAmount}
           required
-          placeholder="0"
-          className="mt-2 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm font-semibold text-[var(--text)] outline-none focus:border-[var(--primary)]"
+          placeholder="Enter amount"
+          className="mt-2 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--primary)]"
         />
       </div>
 
@@ -89,37 +86,40 @@ export function DebtPaymentForm({
         <select
           id="paymentMethod"
           name="paymentMethod"
-          value={paymentMethod}
-          onChange={(event) =>
-            setPaymentMethod(
-              event.target
-                .value as PaymentMethod,
-            )
-          }
+          defaultValue=""
+          required
           className="mt-2 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm font-black text-[var(--text)] outline-none focus:border-[var(--primary)]"
         >
-          <option value="CASH">
-            Cash
+          <option
+            value=""
+            disabled
+          >
+            Choose payment method
           </option>
+
+          <option
+            value="CASH"
+            disabled={
+              !hasOpenDrawer
+            }
+          >
+            {hasOpenDrawer
+              ? 'Cash'
+              : 'Cash — open drawer first'}
+          </option>
+
           <option value="MOBILE_MONEY">
             Mobile money
           </option>
+
           <option value="BANK">
             Bank
           </option>
+
           <option value="CARD">
             Card
           </option>
         </select>
-
-        {isCashPaymentLocked ? (
-          <p className="mt-2 text-xs font-black text-[#E85D5D]">
-            Open the cash
-            drawer before
-            saving a cash
-            payment.
-          </p>
-        ) : null}
       </div>
 
       <div>
@@ -155,17 +155,12 @@ export function DebtPaymentForm({
 
       <button
         type="submit"
-        disabled={
-          pending ||
-          isCashPaymentLocked
-        }
+        disabled={pending}
         className="h-11 w-full rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-white transition hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending
           ? 'Saving...'
-          : isCashPaymentLocked
-            ? 'Open cash drawer first'
-            : 'Save payment'}
+          : 'Save payment'}
       </button>
     </form>
   );

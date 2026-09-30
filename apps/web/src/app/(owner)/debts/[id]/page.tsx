@@ -134,6 +134,8 @@ export default async function DebtDetailPage({
       .select({
         id:
           salePayments.id,
+        paymentType:
+          salePayments.paymentType,
         paymentMethod:
           salePayments.paymentMethod,
         amount:
@@ -146,7 +148,7 @@ export default async function DebtDetailPage({
           users.name,
       })
       .from(salePayments)
-      .innerJoin(
+      .leftJoin(
         users,
         eq(
           salePayments.receivedByUserId,
@@ -158,10 +160,6 @@ export default async function DebtDetailPage({
           eq(
             salePayments.saleId,
             sale.id,
-          ),
-          eq(
-            salePayments.paymentType,
-            'LATER_PAYMENT',
           ),
           eq(
             salePayments.isActive,
@@ -186,29 +184,31 @@ export default async function DebtDetailPage({
     payments.length >
     visiblePayments.length;
 
-  const laterPaymentsTotal =
-    payments.reduce(
-      (sum, payment) =>
-        sum +
-        Number(
-          payment.amount,
-        ),
-      0,
-    );
-
-  const paidAtSale =
+  const paidAmount =
     Math.max(
       0,
       Number(
         sale.paidAmount,
-      ) -
-        laterPaymentsTotal,
+      ),
+    );
+
+  const balanceAmount =
+    Math.max(
+      0,
+      Number(
+        sale.balanceAmount,
+      ),
     );
 
   const isCleared =
-    Number(
-      sale.balanceAmount,
-    ) <= 0;
+    balanceAmount <= 0;
+
+  const saleStatus =
+    isCleared
+      ? 'Cleared sale'
+      : paidAmount > 0
+        ? 'Part-paid sale'
+        : 'Unpaid sale';
 
   return (
     <section className="space-y-4">
@@ -216,9 +216,7 @@ export default async function DebtDetailPage({
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
-              {isCleared
-                ? 'Cleared sale'
-                : 'Unpaid sale'}
+              {saleStatus}
             </p>
 
             <h2 className="mt-1 font-display text-3xl font-black tracking-tight text-[var(--text)]">
@@ -239,6 +237,18 @@ export default async function DebtDetailPage({
           <div className="flex flex-wrap items-center gap-5 sm:justify-end">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                Paid
+              </p>
+
+              <p className="mt-1 text-xl font-black text-[var(--text)]">
+                {money(
+                  paidAmount,
+                )}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
                 {isCleared
                   ? 'Status'
                   : 'Still unpaid'}
@@ -254,7 +264,7 @@ export default async function DebtDetailPage({
                 {isCleared
                   ? 'Cleared'
                   : money(
-                      sale.balanceAmount,
+                      balanceAmount,
                     )}
               </p>
             </div>
@@ -371,40 +381,13 @@ export default async function DebtDetailPage({
         ) : null}
       </div>
 
-      {paidAtSale > 0 ||
-      visiblePayments.length > 0 ? (
+      {visiblePayments.length > 0 ? (
         <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
             Payments
           </p>
 
           <div className="mt-3 divide-y divide-[var(--border)]">
-            {paidAtSale > 0 ? (
-              <div className="flex items-start justify-between gap-4 py-3">
-                <div>
-                  <p className="text-xs font-black text-[var(--muted)]">
-                    Paid at sale
-                  </p>
-
-                  <p className="mt-1 text-sm font-black text-[var(--text)]">
-                    {money(
-                      paidAtSale,
-                    )}
-                  </p>
-
-                  <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
-                    {paymentName(
-                      sale.paymentMethod,
-                    )}{' '}
-                    /{' '}
-                    {dateTime(
-                      sale.saleDate,
-                    )}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
             {visiblePayments.map(
               (payment) => (
                 <div
@@ -415,7 +398,10 @@ export default async function DebtDetailPage({
                 >
                   <div>
                     <p className="text-xs font-black text-[var(--muted)]">
-                      Later payment
+                      {payment.paymentType ===
+                      'LATER_PAYMENT'
+                        ? 'Later payment'
+                        : 'Paid at sale'}
                     </p>
 
                     <p className="mt-1 text-sm font-black text-[var(--text)]">
@@ -427,12 +413,11 @@ export default async function DebtDetailPage({
                     <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
                       {paymentName(
                         payment.paymentMethod,
-                      )}{' '}
-                      /{' '}
-                      {
-                        payment.receivedByName
-                      }{' '}
-                      /{' '}
+                      )}
+                      {payment.receivedByName
+                        ? ` / ${payment.receivedByName}`
+                        : ''}
+                      {' / '}
                       {dateTime(
                         payment.paidAt,
                       )}
@@ -448,7 +433,12 @@ export default async function DebtDetailPage({
                   </div>
 
                   <Link
-                    href={`/sales/${sale.id}/later-payment-fix/${payment.id}`}
+                    href={
+                      payment.paymentType ===
+                      'LATER_PAYMENT'
+                        ? `/sales/${sale.id}/later-payment-fix/${payment.id}`
+                        : `/sales/${sale.id}/payment-fix`
+                    }
                     className="shrink-0 text-xs font-black text-[var(--primary)] hover:underline"
                   >
                     {user.role ===
