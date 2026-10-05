@@ -26,11 +26,11 @@ type ReportPdfProps = {
 const styles =
   StyleSheet.create({
     page: {
-      padding: 32,
+      padding: 30,
       backgroundColor:
         '#FAFAFC',
       color: '#222222',
-      fontSize: 9,
+      fontSize: 8,
       fontFamily:
         'Helvetica',
     },
@@ -39,253 +39,1050 @@ const styles =
       backgroundColor:
         '#222222',
       color: '#FFFFFF',
-      padding: 18,
+      padding: 17,
       marginBottom: 14,
     },
 
-    eyebrow: {
-      color: '#E87517',
+    brand: {
+      color: '#D3AA2F',
       fontSize: 8,
       letterSpacing: 1.6,
-      textTransform:
-        'uppercase',
       marginBottom: 5,
     },
 
     title: {
-      fontSize: 21,
+      fontSize: 20,
       fontWeight: 700,
       marginBottom: 5,
     },
 
-    subtitle: {
+    period: {
       color: '#D1D5DB',
       fontSize: 9,
     },
 
-    result: {
-      backgroundColor:
-        '#FFFFFF',
-      border:
-        '1 solid #E5E7EB',
-      padding: 15,
-      marginBottom: 12,
-    },
-
-    resultLabel: {
-      color: '#6B7280',
-      fontSize: 8,
-      textTransform:
-        'uppercase',
-      letterSpacing: 1.2,
-    },
-
-    resultValue: {
-      fontSize: 22,
-      fontWeight: 700,
-      marginTop: 5,
-    },
-
-    resultHelper: {
-      color: '#6B7280',
-      fontSize: 8,
-      marginTop: 4,
-    },
-
-    summaryGrid: {
-      flexDirection: 'row',
-      gap: 8,
-      marginBottom: 12,
-    },
-
-    summaryCard: {
-      flex: 1,
-      backgroundColor:
-        '#FFFFFF',
-      border:
-        '1 solid #E5E7EB',
-      padding: 9,
-    },
-
-    label: {
-      color: '#6B7280',
-      fontSize: 7,
-      marginBottom: 4,
-    },
-
-    summaryValue: {
-      fontSize: 11,
-      fontWeight: 700,
-    },
-
     section: {
-      backgroundColor:
-        '#FFFFFF',
-      border:
-        '1 solid #E5E7EB',
-      padding: 13,
-      marginBottom: 11,
+      marginBottom: 14,
+    },
+
+    eyebrow: {
+      color: '#B68A00',
+      fontSize: 7,
+      letterSpacing: 1.2,
+      marginBottom: 3,
     },
 
     sectionTitle: {
       fontSize: 12,
       fontWeight: 700,
-      marginBottom: 8,
+      marginBottom: 7,
     },
 
-    twoColumns: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-
-    column: {
-      flex: 1,
-    },
-
-    row: {
-      flexDirection: 'row',
-      alignItems:
-        'flex-start',
-      justifyContent:
-        'space-between',
+    table: {
       borderTop:
-        '1 solid #EEEEEE',
-      paddingVertical: 6,
-      gap: 10,
+        '1 solid #D7D7D7',
+      borderBottom:
+        '1 solid #D7D7D7',
     },
 
-    firstRow: {
+    tableHeader: {
       flexDirection: 'row',
-      alignItems:
-        'flex-start',
-      justifyContent:
-        'space-between',
-      paddingVertical: 6,
-      gap: 10,
+      backgroundColor:
+        '#F0F0F1',
+      borderBottom:
+        '1 solid #D7D7D7',
+      minHeight: 25,
+      alignItems: 'center',
     },
 
-    rowLabel: {
-      flex: 1,
-      color: '#4B5563',
+    tableRow: {
+      flexDirection: 'row',
+      borderBottom:
+        '1 solid #E4E4E4',
+      minHeight: 28,
+      alignItems: 'center',
     },
 
-    rowStrong: {
-      flex: 1,
+    finalRow: {
+      flexDirection: 'row',
+      minHeight: 28,
+      alignItems: 'center',
+    },
+
+    headText: {
+      color: '#6B7280',
+      fontSize: 6.5,
+      fontWeight: 700,
+      letterSpacing: 0.8,
+    },
+
+    bodyText: {
+      fontSize: 8,
       fontWeight: 700,
     },
 
-    rowValue: {
-      width: 105,
-      textAlign: 'right',
-      fontWeight: 700,
-    },
-
-    positive: {
-      color: '#5F8A63',
-    },
-
-    negative: {
-      color: '#E85D5D',
-    },
-
-    productMeta: {
+    detailText: {
       color: '#6B7280',
       fontSize: 7,
-      marginTop: 2,
     },
 
-    empty: {
-      color: '#6B7280',
+    numericText: {
       fontSize: 8,
-      paddingVertical: 4,
+      fontWeight: 700,
+      textAlign: 'right',
+    },
+
+    negativeText: {
+      color: '#D94949',
+    },
+
+    metricCol: {
+      width: '28%',
+      paddingHorizontal: 8,
+    },
+
+    valueCol: {
+      width: '20%',
+      paddingHorizontal: 8,
+    },
+
+    detailCol: {
+      width: '52%',
+      paddingHorizontal: 8,
+    },
+
+    stockMetricCol: {
+      width: '26%',
+      paddingHorizontal: 8,
+    },
+
+    stockQtyCol: {
+      width: '18%',
+      paddingHorizontal: 8,
+    },
+
+    stockValueCol: {
+      width: '22%',
+      paddingHorizontal: 8,
+    },
+
+    stockNotesCol: {
+      width: '34%',
+      paddingHorizontal: 8,
+    },
+
+    productCol: {
+      width: '52%',
+      paddingHorizontal: 8,
+    },
+
+    productQtyCol: {
+      width: '20%',
+      paddingHorizontal: 8,
+    },
+
+    productValueCol: {
+      width: '28%',
+      paddingHorizontal: 8,
+    },
+
+    note: {
+      color: '#6B7280',
+      fontSize: 7,
+      lineHeight: 1.4,
+      marginTop: 5,
     },
 
     footer: {
-      marginTop: 4,
+      marginTop: 5,
       textAlign: 'center',
       color: '#6B7280',
-      fontSize: 7,
+      fontSize: 6.5,
     },
   });
 
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <View
-      style={
-        styles.summaryCard
-      }
-    >
-      <Text
-        style={styles.label}
-      >
-        {label}
-      </Text>
-
-      <Text
-        style={
-          styles.summaryValue
-        }
-      >
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function ReportRow({
-  label,
-  value,
-  index,
-  tone,
-  strong,
-}: {
-  label: string;
-  value: string;
-  index: number;
-  tone?:
-    | 'positive'
-    | 'negative';
-  strong?: boolean;
-}) {
-  const valueStyle = [
-    styles.rowValue,
-    tone === 'positive'
-      ? styles.positive
-      : {},
-    tone === 'negative'
-      ? styles.negative
-      : {},
+function SummaryTable({
+  report,
+}: ReportPdfProps) {
+  const rows = [
+    {
+      label: 'Sales',
+      value:
+        money(
+          report.summary.salesTotal,
+        ),
+      detail: `${report.summary.salesCount} ${
+        report.summary.salesCount ===
+        1
+          ? 'sale'
+          : 'sales'
+      }`,
+      negative: false,
+    },
+    {
+      label:
+        'Money received',
+      value:
+        money(
+          report.summary.moneyReceived,
+        ),
+      detail:
+        'Customer payments received in this period',
+      negative: false,
+    },
+    {
+      label: 'Expenses',
+      value:
+        money(
+          report.summary.expensesTotal,
+        ),
+      detail:
+        'Business money spent in this period',
+      negative:
+        report.summary.expensesTotal >
+        0,
+    },
+    {
+      label:
+        'Discounts',
+      value:
+        money(
+          report.summary.discountTotal,
+        ),
+      detail:
+        report.summary.discountTotal >
+        0
+          ? `Sales before discount: ${money(
+              report.summary.salesBeforeDiscount,
+            )}`
+          : 'No discounts given',
+      negative: false,
+    },
   ];
 
   return (
     <View
       style={
-        index === 0
-          ? styles.firstRow
-          : styles.row
+        styles.section
       }
     >
       <Text
         style={
-          strong
-            ? styles.rowStrong
-            : styles.rowLabel
+          styles.eyebrow
         }
       >
-        {label}
+        SUMMARY
       </Text>
 
       <Text
-        style={valueStyle}
+        style={
+          styles.sectionTitle
+        }
       >
-        {value}
+        Period activity
       </Text>
+
+      <View
+        style={
+          styles.table
+        }
+      >
+        <View
+          style={
+            styles.tableHeader
+          }
+        >
+          <View
+            style={
+              styles.metricCol
+            }
+          >
+            <Text
+              style={
+                styles.headText
+              }
+            >
+              METRIC
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.valueCol
+            }
+          >
+            <Text
+              style={[
+                styles.headText,
+                {
+                  textAlign:
+                    'right',
+                },
+              ]}
+            >
+              VALUE
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.detailCol
+            }
+          >
+            <Text
+              style={
+                styles.headText
+              }
+            >
+              DETAIL
+            </Text>
+          </View>
+        </View>
+
+        {rows.map(
+          (
+            row,
+            index,
+          ) => (
+            <View
+              key={
+                row.label
+              }
+              style={
+                index ===
+                rows.length -
+                  1
+                  ? styles.finalRow
+                  : styles.tableRow
+              }
+            >
+              <View
+                style={
+                  styles.metricCol
+                }
+              >
+                <Text
+                  style={
+                    styles.bodyText
+                  }
+                >
+                  {
+                    row.label
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.valueCol
+                }
+              >
+                <Text
+                  style={[
+                    styles.numericText,
+                    row.negative
+                      ? styles.negativeText
+                      : {},
+                  ]}
+                >
+                  {
+                    row.value
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.detailCol
+                }
+              >
+                <Text
+                  style={
+                    styles.detailText
+                  }
+                >
+                  {
+                    row.detail
+                  }
+                </Text>
+              </View>
+            </View>
+          ),
+        )}
+      </View>
+    </View>
+  );
+}
+
+function MoneyTable({
+  report,
+}: ReportPdfProps) {
+  const paymentRows =
+    report.paymentRows.length >
+    0
+      ? report.paymentRows.map(
+          (row) => ({
+            key:
+              `payment-${row.method}`,
+            label:
+              row.name,
+            value:
+              money(
+                row.total,
+              ),
+            detail:
+              row.later > 0
+                ? `${money(
+                    row.atSale,
+                  )} at sale / ${money(
+                    row.later,
+                  )} later`
+                : 'Customer payments received',
+            negative: false,
+          }),
+        )
+      : [
+          {
+            key:
+              'payments-none',
+            label:
+              'Customer payments',
+            value:
+              money(0),
+            detail:
+              'No customer payments received in this period',
+            negative: false,
+          },
+        ];
+
+  const expenseRows =
+    report.expenseCategoryRows.map(
+      (row) => ({
+        key:
+          `expense-${row.category}`,
+        label:
+          `Expense / ${row.category}`,
+        value:
+          money(
+            row.total,
+          ),
+        detail:
+          'Business expense',
+        negative: true,
+      }),
+    );
+
+  const rows = [
+    ...paymentRows,
+    ...expenseRows,
+    {
+      key:
+        'outstanding',
+      label:
+        'Outstanding',
+      value:
+        money(
+          report.receivables.currentOutstanding,
+        ),
+      detail:
+        'Current total across all unpaid sales',
+      negative: false,
+    },
+    {
+      key:
+        'unpaid-sales',
+      label:
+        'Unpaid sales',
+      value:
+        String(
+          report.receivables.unpaidSalesCount,
+        ),
+      detail:
+        report.receivables.unpaidSalesCount ===
+        0
+          ? 'No customer balances are outstanding'
+          : report.receivables.unpaidSalesCount ===
+              1
+            ? '1 sale still has money owed'
+            : `${report.receivables.unpaidSalesCount} sales still have money owed`,
+      negative: false,
+    },
+  ];
+
+  return (
+    <View
+      style={
+        styles.section
+      }
+    >
+      <Text
+        style={
+          styles.eyebrow
+        }
+      >
+        MONEY
+      </Text>
+
+      <Text
+        style={
+          styles.sectionTitle
+        }
+      >
+        Money and receivables
+      </Text>
+
+      <View
+        style={
+          styles.table
+        }
+      >
+        <View
+          style={
+            styles.tableHeader
+          }
+        >
+          <View
+            style={
+              styles.metricCol
+            }
+          >
+            <Text
+              style={
+                styles.headText
+              }
+            >
+              CATEGORY
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.valueCol
+            }
+          >
+            <Text
+              style={[
+                styles.headText,
+                {
+                  textAlign:
+                    'right',
+                },
+              ]}
+            >
+              VALUE
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.detailCol
+            }
+          >
+            <Text
+              style={
+                styles.headText
+              }
+            >
+              DETAIL
+            </Text>
+          </View>
+        </View>
+
+        {rows.map(
+          (
+            row,
+            index,
+          ) => (
+            <View
+              key={
+                row.key
+              }
+              style={
+                index ===
+                rows.length -
+                  1
+                  ? styles.finalRow
+                  : styles.tableRow
+              }
+            >
+              <View
+                style={
+                  styles.metricCol
+                }
+              >
+                <Text
+                  style={
+                    styles.bodyText
+                  }
+                >
+                  {
+                    row.label
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.valueCol
+                }
+              >
+                <Text
+                  style={[
+                    styles.numericText,
+                    row.negative
+                      ? styles.negativeText
+                      : {},
+                  ]}
+                >
+                  {
+                    row.value
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.detailCol
+                }
+              >
+                <Text
+                  style={
+                    styles.detailText
+                  }
+                >
+                  {
+                    row.detail
+                  }
+                </Text>
+              </View>
+            </View>
+          ),
+        )}
+      </View>
+
+      <Text
+        style={
+          styles.note
+        }
+      >
+        Outstanding and unpaid
+        sales show the current
+        business position and are
+        not limited to the selected
+        report period.
+      </Text>
+    </View>
+  );
+}
+
+function StockTable({
+  report,
+}: ReportPdfProps) {
+  const rows = [
+    {
+      label:
+        'Current remaining',
+      quantity:
+        `${report.stock.remainingUnits} units`,
+      value:
+        money(
+          report.stock.remainingValue,
+        ),
+      notes:
+        'Current ledger / current selling prices',
+    },
+    {
+      label:
+        'Received',
+      quantity:
+        `${report.stock.receivedUnits} units`,
+      value:
+        money(
+          report.stock.receivedValue,
+        ),
+      notes:
+        'Selected period / selling price at receipt',
+    },
+    {
+      label: 'Sold',
+      quantity:
+        `${report.stock.soldUnits} units`,
+      value:
+        money(
+          report.stock.soldValue,
+        ),
+      notes:
+        'Selected period / sale item value',
+    },
+    {
+      label:
+        'Damaged',
+      quantity:
+        `${report.stock.damagedUnits} units`,
+      value: '—',
+      notes:
+        'Selected period / quantity only',
+    },
+  ];
+
+  return (
+    <View
+      style={
+        styles.section
+      }
+    >
+      <Text
+        style={
+          styles.eyebrow
+        }
+      >
+        STOCK
+      </Text>
+
+      <Text
+        style={
+          styles.sectionTitle
+        }
+      >
+        Stock position
+      </Text>
+
+      <View
+        style={
+          styles.table
+        }
+      >
+        <View
+          style={
+            styles.tableHeader
+          }
+        >
+          <View
+            style={
+              styles.stockMetricCol
+            }
+          >
+            <Text
+              style={
+                styles.headText
+              }
+            >
+              METRIC
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.stockQtyCol
+            }
+          >
+            <Text
+              style={[
+                styles.headText,
+                {
+                  textAlign:
+                    'right',
+                },
+              ]}
+            >
+              QUANTITY
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.stockValueCol
+            }
+          >
+            <Text
+              style={[
+                styles.headText,
+                {
+                  textAlign:
+                    'right',
+                },
+              ]}
+            >
+              VALUE
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.stockNotesCol
+            }
+          >
+            <Text
+              style={
+                styles.headText
+              }
+            >
+              NOTES
+            </Text>
+          </View>
+        </View>
+
+        {rows.map(
+          (
+            row,
+            index,
+          ) => (
+            <View
+              key={
+                row.label
+              }
+              style={
+                index ===
+                rows.length -
+                  1
+                  ? styles.finalRow
+                  : styles.tableRow
+              }
+            >
+              <View
+                style={
+                  styles.stockMetricCol
+                }
+              >
+                <Text
+                  style={
+                    styles.bodyText
+                  }
+                >
+                  {
+                    row.label
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.stockQtyCol
+                }
+              >
+                <Text
+                  style={
+                    styles.numericText
+                  }
+                >
+                  {
+                    row.quantity
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.stockValueCol
+                }
+              >
+                <Text
+                  style={
+                    styles.numericText
+                  }
+                >
+                  {
+                    row.value
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.stockNotesCol
+                }
+              >
+                <Text
+                  style={
+                    styles.detailText
+                  }
+                >
+                  {
+                    row.notes
+                  }
+                </Text>
+              </View>
+            </View>
+          ),
+        )}
+      </View>
+
+      <Text
+        style={
+          styles.note
+        }
+      >
+        Current remaining stock is
+        a current-state figure.
+        Received, sold and damaged
+        follow the selected report
+        period.
+      </Text>
+    </View>
+  );
+}
+
+function ProductsTable({
+  report,
+}: ReportPdfProps) {
+  if (
+    report.productRows.length ===
+    0
+  ) {
+    return null;
+  }
+
+  return (
+    <View
+      style={
+        styles.section
+      }
+    >
+      <Text
+        style={
+          styles.eyebrow
+        }
+      >
+        PRODUCTS
+      </Text>
+
+      <Text
+        style={
+          styles.sectionTitle
+        }
+      >
+        Best sellers
+      </Text>
+
+      <View
+        style={
+          styles.table
+        }
+      >
+        <View
+          style={
+            styles.tableHeader
+          }
+        >
+          <View
+            style={
+              styles.productCol
+            }
+          >
+            <Text
+              style={
+                styles.headText
+              }
+            >
+              PRODUCT
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.productQtyCol
+            }
+          >
+            <Text
+              style={[
+                styles.headText,
+                {
+                  textAlign:
+                    'right',
+                },
+              ]}
+            >
+              QUANTITY
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.productValueCol
+            }
+          >
+            <Text
+              style={[
+                styles.headText,
+                {
+                  textAlign:
+                    'right',
+                },
+              ]}
+            >
+              SALES VALUE
+            </Text>
+          </View>
+        </View>
+
+        {report.productRows.map(
+          (
+            row,
+            index,
+          ) => (
+            <View
+              key={
+                row.id
+              }
+              style={
+                index ===
+                report.productRows.length -
+                  1
+                  ? styles.finalRow
+                  : styles.tableRow
+              }
+            >
+              <View
+                style={
+                  styles.productCol
+                }
+              >
+                <Text
+                  style={
+                    styles.bodyText
+                  }
+                >
+                  {
+                    row.name
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.productQtyCol
+                }
+              >
+                <Text
+                  style={
+                    styles.numericText
+                  }
+                >
+                  {
+                    row.quantity
+                  }
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.productValueCol
+                }
+              >
+                <Text
+                  style={
+                    styles.numericText
+                  }
+                >
+                  {money(
+                    row.salesValue,
+                  )}
+                </Text>
+              </View>
+            </View>
+          ),
+        )}
+      </View>
     </View>
   );
 }
@@ -293,142 +1090,6 @@ function ReportRow({
 function ReportPdf({
   report,
 }: ReportPdfProps) {
-  const { summary } =
-    report;
-
-  const hasSalesActivity =
-    summary.salesCount > 0;
-
-  const hasPaymentActivity =
-    report.paymentRows.length > 0;
-
-  const hasExpenseActivity =
-    report.expenseCategoryRows.length > 0;
-
-  const hasProductActivity =
-    report.productRows.length > 0;
-
-  const hasActivity =
-    hasSalesActivity ||
-    hasPaymentActivity ||
-    hasExpenseActivity ||
-    hasProductActivity;
-
-  const hasProfitActivity =
-    hasSalesActivity ||
-    hasExpenseActivity;
-
-  const hasLoss =
-    summary.netProfit < 0;
-
-  const resultValue =
-    hasLoss
-      ? Math.abs(
-          summary.netProfit,
-        )
-      : summary.netProfit;
-
-  const resultLabel =
-    !hasActivity
-      ? 'No activity'
-      : hasLoss
-        ? 'Net loss'
-        : summary.netProfit >
-            0
-          ? 'Net profit'
-          : 'Net result';
-
-  const resultHelper =
-    !hasActivity
-      ? 'No sales, payments or expenses were recorded in this period.'
-      : !hasProfitActivity
-        ? 'Payments were recorded in this period. No sales or expenses were recorded.'
-        : summary.netProfit > 0
-          ? 'The boutique made a profit in this period.'
-          : summary.netProfit < 0
-            ? 'Costs and expenses were higher than profit from sales.'
-            : 'The boutique broke even in this period.';
-
-  const profitRows: Array<{
-    label: string;
-    value: string;
-    tone?:
-      | 'positive'
-      | 'negative';
-    strong?: boolean;
-  }> = [];
-
-  if (
-    summary.discountTotal >
-    0
-  ) {
-    profitRows.push({
-      label:
-        'Sales before discount',
-      value: money(
-        summary.salesBeforeDiscount,
-      ),
-    });
-
-    profitRows.push({
-      label: 'Discounts',
-      value: `- ${money(
-        summary.discountTotal,
-      )}`,
-      tone: 'negative',
-    });
-  }
-
-  profitRows.push({
-    label: 'Sales',
-    value: money(
-      summary.salesTotal,
-    ),
-  });
-
-  profitRows.push({
-    label:
-      'Cost of items sold',
-    value: `- ${money(
-      summary.costOfItemsSold,
-    )}`,
-    tone: 'negative',
-  });
-
-  profitRows.push({
-    label: 'Gross profit',
-    value: money(
-      summary.grossProfit,
-    ),
-    tone:
-      summary.grossProfit >=
-      0
-        ? 'positive'
-        : 'negative',
-  });
-
-  profitRows.push({
-    label: 'Expenses',
-    value: `- ${money(
-      summary.expensesTotal,
-    )}`,
-    tone: 'negative',
-  });
-
-  profitRows.push({
-    label: resultLabel,
-    value: money(
-      resultValue,
-    ),
-    tone: hasLoss
-      ? 'negative'
-      : summary.netProfit >
-          0
-        ? 'positive'
-        : undefined,
-    strong: true,
-  });
-
   const generatedAt =
     new Intl.DateTimeFormat(
       'en-GB',
@@ -449,18 +1110,21 @@ function ReportPdf({
     <Document>
       <Page
         size="A4"
-        style={styles.page}
+        style={
+          styles.page
+        }
       >
         <View
-          style={styles.header}
+          style={
+            styles.header
+          }
         >
           <Text
             style={
-              styles.eyebrow
+              styles.brand
             }
           >
-            Bloom Kigali
-            Boutique
+            BLOOM KIGALI
           </Text>
 
           <Text
@@ -473,7 +1137,7 @@ function ReportPdf({
 
           <Text
             style={
-              styles.subtitle
+              styles.period
             }
           >
             {
@@ -483,363 +1147,21 @@ function ReportPdf({
           </Text>
         </View>
 
-        <View
-          style={
-            styles.result
-          }
-        >
-          <Text
-            style={
-              styles.resultLabel
-            }
-          >
-            {resultLabel}
-          </Text>
+        <SummaryTable
+          report={report}
+        />
 
-          <Text
-            style={[
-              styles.resultValue,
-              hasLoss
-                ? styles.negative
-                : summary.netProfit >
-                    0
-                  ? styles.positive
-                  : {},
-            ]}
-          >
-            {money(
-              resultValue,
-            )}
-          </Text>
+        <MoneyTable
+          report={report}
+        />
 
-          <Text
-            style={
-              styles.resultHelper
-            }
-          >
-            {resultHelper}
-          </Text>
-        </View>
+        <StockTable
+          report={report}
+        />
 
-        <View
-          style={
-            styles.summaryGrid
-          }
-        >
-          <SummaryCard
-            label="Sales"
-            value={money(
-              summary.salesTotal,
-            )}
-          />
-
-          <SummaryCard
-            label="Money received"
-            value={money(
-              summary.moneyReceived,
-            )}
-          />
-
-          <SummaryCard
-            label="Expenses"
-            value={money(
-              summary.expensesTotal,
-            )}
-          />
-
-          <SummaryCard
-            label="Still unpaid"
-            value={money(
-              summary.stillUnpaid,
-            )}
-          />
-        </View>
-
-        {(hasPaymentActivity || hasProfitActivity) && (
-        <View
-          style={
-            styles.twoColumns
-          }
-        >
-          {hasPaymentActivity && (
-          <View
-            style={
-              styles.column
-            }
-          >
-            <View
-              style={
-                styles.section
-              }
-            >
-              <Text
-                style={
-                  styles.sectionTitle
-                }
-              >
-                Money received
-              </Text>
-
-              {report
-                .paymentRows
-                .length ===
-              0 ? (
-                <Text
-                  style={
-                    styles.empty
-                  }
-                >
-                  No customer
-                  money received
-                  in this period.
-                </Text>
-              ) : (
-                report.paymentRows.map(
-                  (
-                    row,
-                    index,
-                  ) => (
-                    <ReportRow
-                      key={
-                        row.method
-                      }
-                      index={
-                        index
-                      }
-                      label={
-                        row.name
-                      }
-                      value={money(
-                        row.total,
-                      )}
-                      tone={
-                        row.total <
-                        0
-                          ? 'negative'
-                          : undefined
-                      }
-                    />
-                  ),
-                )
-              )}
-            </View>
-          </View>
-          )}
-
-          {hasProfitActivity && (
-          <View
-            style={
-              styles.column
-            }
-          >
-            <View
-              style={
-                styles.section
-              }
-            >
-              <Text
-                style={
-                  styles.sectionTitle
-                }
-              >
-                Profit breakdown
-              </Text>
-
-              {profitRows.map(
-                (
-                  row,
-                  index,
-                ) => (
-                  <ReportRow
-                    key={
-                      row.label
-                    }
-                    index={
-                      index
-                    }
-                    label={
-                      row.label
-                    }
-                    value={
-                      row.value
-                    }
-                    tone={
-                      row.tone
-                    }
-                    strong={
-                      row.strong
-                    }
-                  />
-                ),
-              )}
-            </View>
-          </View>
-          )}
-        </View>
-        )}
-
-        {(hasExpenseActivity || hasProductActivity) && (
-        <View
-          style={
-            styles.twoColumns
-          }
-        >
-          {hasExpenseActivity && (
-          <View
-            style={
-              styles.column
-            }
-          >
-            <View
-              style={
-                styles.section
-              }
-            >
-              <Text
-                style={
-                  styles.sectionTitle
-                }
-              >
-                Expenses
-              </Text>
-
-              {report
-                .expenseCategoryRows
-                .length ===
-              0 ? (
-                <Text
-                  style={
-                    styles.empty
-                  }
-                >
-                  No expenses in
-                  this period.
-                </Text>
-              ) : (
-                report.expenseCategoryRows.map(
-                  (
-                    row,
-                    index,
-                  ) => (
-                    <ReportRow
-                      key={
-                        row.category
-                      }
-                      index={
-                        index
-                      }
-                      label={
-                        row.category
-                      }
-                      value={money(
-                        row.total,
-                      )}
-                      tone="negative"
-                    />
-                  ),
-                )
-              )}
-            </View>
-          </View>
-          )}
-
-          {hasProductActivity && (
-          <View
-            style={
-              styles.column
-            }
-          >
-            <View
-              style={
-                styles.section
-              }
-            >
-              <Text
-                style={
-                  styles.sectionTitle
-                }
-              >
-                Top products sold
-              </Text>
-
-              {report
-                .productRows
-                .length ===
-              0 ? (
-                <Text
-                  style={
-                    styles.empty
-                  }
-                >
-                  No products sold
-                  in this period.
-                </Text>
-              ) : (
-                report.productRows.map(
-                  (
-                    row,
-                    index,
-                  ) => (
-                    <View
-                      key={
-                        row.name
-                      }
-                      style={
-                        index ===
-                        0
-                          ? styles.firstRow
-                          : styles.row
-                      }
-                    >
-                      <View
-                        style={{
-                          flex: 1,
-                        }}
-                      >
-                        <Text
-                          style={
-                            styles.rowStrong
-                          }
-                        >
-                          {
-                            row.name
-                          }
-                        </Text>
-
-                        <Text
-                          style={
-                            styles.productMeta
-                          }
-                        >
-                          {
-                            row.quantity
-                          }{' '}
-                          sold /
-                          Profit{' '}
-                          {money(
-                            row.profit,
-                          )}
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={
-                          styles.rowValue
-                        }
-                      >
-                        {money(
-                          row.total,
-                        )}
-                      </Text>
-                    </View>
-                  ),
-                )
-              )}
-            </View>
-          </View>
-          )}
-        </View>
-        )}
+        <ProductsTable
+          report={report}
+        />
 
         <Text
           style={
@@ -850,7 +1172,6 @@ function ReportPdf({
           {generatedAt} /
           Africa/Kigali /
           Bloom Kigali
-          Boutique
         </Text>
       </Page>
     </Document>
