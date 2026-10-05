@@ -1,5 +1,10 @@
-import { eq } from 'drizzle-orm';
+import {
+  eq,
+  isNull,
+} from 'drizzle-orm';
+
 import { db } from '@bloom-kigali/db/client';
+
 import {
   expenses,
   moneyAdditions,
@@ -61,21 +66,25 @@ export async function getMoneyBalances() {
 
     db
       .select()
-      .from(moneyTransfers),
+      .from(moneyTransfers)
+      .where(
+        isNull(
+          moneyTransfers.reversedAt,
+        ),
+      ),
 
     db
       .select()
-      .from(moneyAdditions),
+      .from(moneyAdditions)
+      .where(
+        isNull(
+          moneyAdditions.reversedAt,
+        ),
+      ),
   ]);
 
   return paymentMethods.map(
     (method) => {
-      /*
-       * Customer money entering this payment method.
-       *
-       * receivedAmount is the actual amount handed over
-       * before any refund/change is returned.
-       */
       const customerIn =
         paymentList
           .filter(
@@ -94,10 +103,6 @@ export async function getMoneyBalances() {
             0,
           );
 
-      /*
-       * Refund/change leaves the method it was
-       * actually returned from.
-       */
       const customerReturnsOut =
         paymentList
           .filter(
@@ -196,13 +201,16 @@ export async function getMoneyBalances() {
 
       return {
         method,
+
         name:
           paymentName(
             method,
           ),
+
         balance:
           moneyIn -
           moneyOut,
+
         moneyIn,
         moneyOut,
       };

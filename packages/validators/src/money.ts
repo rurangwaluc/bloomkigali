@@ -28,7 +28,30 @@ export const externalMoneyAdditionSchema =
       .max(1000),
   });
 
+export const moneyReversalSchema =
+  z.object({
+    targetId: z
+      .string()
+      .uuid(
+        'This money record is not valid.',
+      ),
+
+    reason: z
+      .string()
+      .trim()
+      .min(
+        1,
+        'Explain why this money entry is being reversed.',
+      )
+      .max(1000),
+  });
+
 export type ExternalMoneyAdditionInput =
   z.infer<
     typeof externalMoneyAdditionSchema
+  >;
+
+export type MoneyReversalInput =
+  z.infer<
+    typeof moneyReversalSchema
   >;

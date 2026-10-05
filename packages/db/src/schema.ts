@@ -43,6 +43,7 @@ export const cashDrawerMovementTypeEnum = pgEnum('cash_drawer_movement_type', [
   'CASH_ADDED',
   'CASH_REMOVED',
   'CASH_DEPOSIT',
+  'CASH_DEPOSIT_REVERSAL',
   'CASH_EXPENSE',
   'EXPENSE_CORRECTION',
   'CASH_DEBT_PAYMENT',
@@ -486,6 +487,17 @@ export const moneyTransfers = pgTable('money_transfers', {
 
   notes: text('notes'),
 
+  reversedByUserId: uuid('reversed_by_user_id')
+    .references(() => users.id, {
+      onDelete: 'restrict',
+    }),
+
+  reversedAt: timestamp('reversed_at', {
+    withTimezone: true,
+  }),
+
+  reversalReason: text('reversal_reason'),
+
   movedAt: timestamp('moved_at', {
     withTimezone: true,
   })
@@ -517,6 +529,17 @@ export const moneyAdditions = pgTable('money_additions', {
     .default('0'),
 
   notes: text('notes'),
+
+  reversedByUserId: uuid('reversed_by_user_id')
+    .references(() => users.id, {
+      onDelete: 'restrict',
+    }),
+
+  reversedAt: timestamp('reversed_at', {
+    withTimezone: true,
+  }),
+
+  reversalReason: text('reversal_reason'),
 
   addedAt: timestamp('added_at', {
     withTimezone: true,
@@ -697,9 +720,31 @@ export const usersRelations = relations(users, ({ many }) => ({
   receivedDebtPayments: many(debtPayments),
   receivedSalePayments: many(salePayments),
 
-  moneyAdditions: many(moneyAdditions),
+  moneyAdditions: many(moneyAdditions, {
+    relationName:
+      'money_addition_added_by',
+  }),
 
-  moneyTransfers: many(moneyTransfers),
+  reversedMoneyAdditions: many(
+    moneyAdditions,
+    {
+      relationName:
+        'money_addition_reversed_by',
+    },
+  ),
+
+  moneyTransfers: many(moneyTransfers, {
+    relationName:
+      'money_transfer_moved_by',
+  }),
+
+  reversedMoneyTransfers: many(
+    moneyTransfers,
+    {
+      relationName:
+        'money_transfer_reversed_by',
+    },
+  ),
 
   requestedCorrections: many(corrections, {
     relationName: 'correction_requested_by',
@@ -819,6 +864,19 @@ export const moneyTransfersRelations = relations(
       references: [
         users.id,
       ],
+      relationName:
+        'money_transfer_moved_by',
+    }),
+
+    reversedBy: one(users, {
+      fields: [
+        moneyTransfers.reversedByUserId,
+      ],
+      references: [
+        users.id,
+      ],
+      relationName:
+        'money_transfer_reversed_by',
     }),
   }),
 );
@@ -833,6 +891,19 @@ export const moneyAdditionsRelations = relations(
       references: [
         users.id,
       ],
+      relationName:
+        'money_addition_added_by',
+    }),
+
+    reversedBy: one(users, {
+      fields: [
+        moneyAdditions.reversedByUserId,
+      ],
+      references: [
+        users.id,
+      ],
+      relationName:
+        'money_addition_reversed_by',
     }),
   }),
 );

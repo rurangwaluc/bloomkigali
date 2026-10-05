@@ -30,6 +30,8 @@ import {
 
 import {
   addExternalMoneyAction,
+  reverseExternalMoneyAdditionAction,
+  reverseMoneyTransferAction,
 } from '@/lib/money/actions';
 
 type MoneyPageProps = {
@@ -38,6 +40,7 @@ type MoneyPageProps = {
     accountAction?: string;
     error?: string;
     externalAdded?: string;
+    moneyReversed?: string;
     drawerOpened?: string;
     drawerClosed?: string;
     cashAdded?: string;
@@ -54,6 +57,7 @@ type MovementType =
   | 'CASH_ADDED'
   | 'CASH_REMOVED'
   | 'CASH_DEPOSIT'
+  | 'CASH_DEPOSIT_REVERSAL'
   | 'CASH_EXPENSE'
   | 'EXPENSE_CORRECTION'
   | 'CASH_DEBT_PAYMENT'
@@ -112,6 +116,10 @@ function movementName(
       'Cash removed',
     CASH_DEPOSIT:
       'Cash deposited',
+
+    CASH_DEPOSIT_REVERSAL:
+      'Deposit reversed',
+
     CASH_EXPENSE:
       'Cash expense',
 
@@ -143,6 +151,13 @@ function successMessage(
     '1'
   ) {
     return 'External money added.';
+  }
+
+  if (
+    params?.moneyReversed ===
+    '1'
+  ) {
+    return 'Money entry reversed.';
   }
 
   if (
@@ -262,6 +277,7 @@ export default async function MoneyPage({
       ? db.query.moneyAdditions.findMany({
           with: {
             addedBy: true,
+            reversedBy: true,
           },
           orderBy: (
             moneyAdditions,
@@ -279,6 +295,7 @@ export default async function MoneyPage({
       ? db.query.moneyTransfers.findMany({
           with: {
             movedBy: true,
+            reversedBy: true,
           },
           orderBy: (
             moneyTransfers,
@@ -293,6 +310,39 @@ export default async function MoneyPage({
       : Promise.resolve([]),
   ]);
 
+  const movements =
+    currentDrawer
+      ? await db.query.cashDrawerMovements.findMany(
+          {
+            where: eq(
+              cashDrawerMovements.drawerId,
+              currentDrawer.id,
+            ),
+            with: {
+              createdBy: true,
+            },
+            orderBy: desc(
+              cashDrawerMovements.createdAt,
+            ),
+          },
+        )
+      : [];
+
+  const currentDrawerDepositIds =
+    new Set(
+      movements
+        .filter(
+          (movement) =>
+            movement.movementType ===
+              'CASH_DEPOSIT' &&
+            movement.moneyTransferId,
+        )
+        .map(
+          (movement) =>
+            movement.moneyTransferId as string,
+        ),
+    );
+
   const moneyHistory =
     isOwner
       ? [
@@ -300,6 +350,12 @@ export default async function MoneyPage({
             (addition) => ({
               id:
                 `addition-${addition.id}`,
+
+              sourceType:
+                'ADDITION' as const,
+
+              sourceId:
+                addition.id,
 
               kind:
                 addition.paymentMethod ===
@@ -333,6 +389,21 @@ export default async function MoneyPage({
 
               happenedAt:
                 addition.addedAt,
+
+              reversedAt:
+                addition.reversedAt,
+
+              reversalReason:
+                addition.reversalReason,
+
+              reversedBy:
+                addition.reversedBy
+                  ?.name || null,
+
+              canReverse:
+                !addition.reversedAt &&
+                addition.paymentMethod !==
+                  'CASH',
             }),
           ),
 
@@ -340,6 +411,12 @@ export default async function MoneyPage({
             (transfer) => ({
               id:
                 `transfer-${transfer.id}`,
+
+              sourceType:
+                'TRANSFER' as const,
+
+              sourceId:
+                transfer.id,
 
               kind:
                 'Money transferred',
@@ -368,6 +445,24 @@ export default async function MoneyPage({
 
               happenedAt:
                 transfer.movedAt,
+
+              reversedAt:
+                transfer.reversedAt,
+
+              reversalReason:
+                transfer.reversalReason,
+
+              reversedBy:
+                transfer.reversedBy
+                  ?.name || null,
+
+              canReverse:
+                !transfer.reversedAt &&
+                transfer.fromPaymentMethod ===
+                  'CASH' &&
+                currentDrawerDepositIds.has(
+                  transfer.id,
+                ),
             }),
           ),
         ]
@@ -377,24 +472,6 @@ export default async function MoneyPage({
               a.happenedAt.getTime(),
           )
           .slice(0, 25)
-      : [];
-
-  const movements =
-    currentDrawer
-      ? await db.query.cashDrawerMovements.findMany(
-          {
-            where: eq(
-              cashDrawerMovements.drawerId,
-              currentDrawer.id,
-            ),
-            with: {
-              createdBy: true,
-            },
-            orderBy: desc(
-              cashDrawerMovements.createdAt,
-            ),
-          },
-        )
       : [];
 
   const expectedCash =
@@ -670,14 +747,78 @@ export default async function MoneyPage({
                           entry.happenedAt,
                         )}
                       </p>
+
+                      {entry.reversedAt ? (
+                        <p className="mt-1 text-xs font-black leading-5 text-[var(--danger)]">
+                          Reversed
+                          {entry.reversedBy
+                            ? ` by ${entry.reversedBy}`
+                            : ''}
+                          {' / '}
+                          {entry.reversalReason ||
+                            'No reason'}
+                          {' / '}
+                          {dateTime(
+                            entry.reversedAt,
+                          )}
+                        </p>
+                      ) : null}
+
+                      {entry.canReverse ? (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs font-black text-[var(--danger)]">
+                            Reverse entry
+                          </summary>
+
+                          <form
+                            action={
+                              entry.sourceType ===
+                              'ADDITION'
+                                ? reverseExternalMoneyAdditionAction
+                                : reverseMoneyTransferAction
+                            }
+                            className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row"
+                          >
+                            <input
+                              type="hidden"
+                              name={
+                                entry.sourceType ===
+                                'ADDITION'
+                                  ? 'additionId'
+                                  : 'transferId'
+                              }
+                              value={
+                                entry.sourceId
+                              }
+                            />
+
+                            <input
+                              name="reason"
+                              required
+                              maxLength={1000}
+                              placeholder="Why is this entry being reversed?"
+                              className="h-10 min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--primary)]"
+                            />
+
+                            <button
+                              type="submit"
+                              className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[var(--danger)] px-4 text-xs font-black text-[var(--danger)]"
+                            >
+                              Confirm reversal
+                            </button>
+                          </form>
+                        </details>
+                      ) : null}
                     </div>
 
                     <p
                       className={
-                        entry.direction ===
-                        'IN'
-                          ? 'shrink-0 text-sm font-black tabular-nums text-[var(--success)]'
-                          : 'shrink-0 text-sm font-black tabular-nums text-[var(--text)]'
+                        entry.reversedAt
+                          ? 'shrink-0 text-sm font-black tabular-nums text-[var(--muted)] line-through'
+                          : entry.direction ===
+                              'IN'
+                            ? 'shrink-0 text-sm font-black tabular-nums text-[var(--success)]'
+                            : 'shrink-0 text-sm font-black tabular-nums text-[var(--text)]'
                       }
                     >
                       {entry.direction ===
