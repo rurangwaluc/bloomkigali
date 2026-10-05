@@ -23,6 +23,10 @@ import {
   getExpectedDrawerCash,
 } from '@/lib/cash-drawer/calculations';
 
+import {
+  getMoneyBalances,
+} from '@/lib/money/balance';
+
 type MoneyPageProps = {
   searchParams?: Promise<{
     action?: string;
@@ -201,6 +205,7 @@ export default async function MoneyPage({
   const [
     currentDrawer,
     lastClosedDrawer,
+    accountBalances,
   ] = await Promise.all([
     db.query.cashDrawers.findFirst(
       {
@@ -229,6 +234,10 @@ export default async function MoneyPage({
         ),
       },
     ),
+
+    isOwner
+      ? getMoneyBalances()
+      : Promise.resolve([]),
   ]);
 
   const movements =
@@ -301,11 +310,64 @@ export default async function MoneyPage({
         </div>
       ) : null}
 
+      {isOwner ? (
+        <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+          <div className="border-b border-[var(--border)] px-5 py-5 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
+              Money
+            </p>
+
+            <h2 className="mt-1 text-xl font-black tracking-tight text-[var(--text)]">
+              Account balances
+            </h2>
+
+            <p className="mt-1 text-sm font-bold text-[var(--muted)]">
+              Business money by payment method.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4">
+            {accountBalances.map(
+              (account, index) => (
+                <div
+                  key={account.method}
+                  className={
+                    [
+                      'border-b border-r border-[var(--border)] px-4 py-4 sm:border-b-0 sm:px-6',
+                      'border-b border-[var(--border)] px-4 py-4 sm:border-r sm:border-b-0 sm:px-6',
+                      'border-r border-[var(--border)] px-4 py-4 sm:px-6',
+                      'px-4 py-4 sm:px-6',
+                    ][index]
+                  }
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {account.name}
+                  </p>
+
+                  <p className="mt-1 text-lg font-black tabular-nums text-[var(--text)]">
+                    {money(
+                      account.balance,
+                    )}
+                  </p>
+
+                  {account.method ===
+                  'CASH' ? (
+                    <p className="mt-1 text-xs font-bold text-[var(--muted)]">
+                      Accounting balance
+                    </p>
+                  ) : null}
+                </div>
+              ),
+            )}
+          </div>
+        </section>
+      ) : null}
+
       <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
-              Money
+              Cash
             </p>
 
             <h2 className="mt-1 text-xl font-black tracking-tight text-[var(--text)]">
