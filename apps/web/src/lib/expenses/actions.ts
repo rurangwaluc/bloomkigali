@@ -1,14 +1,13 @@
 'use server';
 
-import { desc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db } from '@bloom-kigali/db/client';
-import { cashDrawerMovements, cashDrawers, expenses } from '@bloom-kigali/db/schema';
+import { cashDrawerMovements, expenses } from '@bloom-kigali/db/schema';
 import { expenseFormSchema } from '@bloom-kigali/validators/expense';
 import { requireUser } from '@/lib/auth/session';
 import { getPaymentMethodBalance, paymentName } from '@/lib/money/balance';
-import { getExpectedDrawerCash } from '@/lib/cash-drawer/calculations';
+import { getLockedCurrentDrawerState } from '@/lib/cash-drawer/locking';
 
 function cleanOptional(value: string | undefined) {
   const cleaned = value?.trim();
@@ -60,13 +59,6 @@ function kigaliDateKey() {
   return `${year}-${month}-${day}`;
 }
 
-async function getOpenDrawer() {
-  return db.query.cashDrawers.findFirst({
-    where: eq(cashDrawers.status, 'OPEN'),
-    orderBy: desc(cashDrawers.openedAt),
-  });
-}
-
 export async function createExpenseAction(formData: FormData) {
   const user = await requireUser();
 
@@ -110,62 +102,104 @@ export async function createExpenseAction(formData: FormData) {
         : new Date();
 
   if (parsed.data.paymentMethod === 'CASH') {
-    const drawer = await getOpenDrawer();
-
-    if (!drawer) {
-      redirect('/expenses?error=Open the cash drawer before saving a cash expense.');
-    }
-
-    const movements = await db
-      .select()
-      .from(cashDrawerMovements)
-      .where(eq(cashDrawerMovements.drawerId, drawer.id));
-
-    const expectedCash = getExpectedDrawerCash(drawer, movements);
-
-    if (expenseAmount > expectedCash) {
-      redirect(
-        `/expenses?error=${encodeURIComponent(
-          `Not enough drawer cash. Expected cash is RWF ${expectedCash.toLocaleString('en-US')}.`,
-        )}`,
-      );
-    }
+    let cashError:
+      | string
+      | null =
+      null;
 
     await db.transaction(async (tx) => {
-      const [expense] = await tx
-        .insert(expenses)
+      const state =
+        await getLockedCurrentDrawerState(
+          tx,
+        );
+
+      if (!state) {
+        cashError =
+          'Open the cash drawer before saving a cash expense.';
+        return;
+      }
+
+      if (
+        expenseAmount >
+        state.expectedCash
+      ) {
+        cashError =
+          `Not enough drawer cash. Expected cash is RWF ${state.expectedCash.toLocaleString(
+            'en-US',
+          )}.`;
+        return;
+      }
+
+      const [expense] =
+        await tx
+          .insert(expenses)
+          .values({
+            recordedByUserId:
+              user.id,
+
+            name:
+              parsed.data.name,
+
+            category:
+              parsed.data.category,
+
+            amount:
+              parsed.data.amount,
+
+            paymentMethod:
+              'CASH',
+
+            expenseDate,
+
+            notes:
+              cleanOptional(
+                parsed.data.notes,
+              ),
+          })
+          .returning({
+            id:
+              expenses.id,
+          });
+
+      await tx
+        .insert(
+          cashDrawerMovements,
+        )
         .values({
-          recordedByUserId:
+          drawerId:
+            state.drawer.id,
+
+          createdByUserId:
             user.id,
 
-          name:
-            parsed.data.name,
+          movementType:
+            'CASH_EXPENSE',
 
-          category:
-            parsed.data.category,
+          direction:
+            'OUT',
 
           amount:
             parsed.data.amount,
 
-          paymentMethod:
-            'CASH',
-          expenseDate,
-          notes: cleanOptional(parsed.data.notes),
-        })
-        .returning({ id: expenses.id });
+          reason:
+            cleanOptional(
+              parsed.data.notes,
+            )
+              ? `${parsed.data.name} / ${parsed.data.notes}`
+              : parsed.data.name,
 
-      await tx.insert(cashDrawerMovements).values({
-        drawerId: drawer.id,
-        createdByUserId: user.id,
-        movementType: 'CASH_EXPENSE',
-        direction: 'OUT',
-        amount: parsed.data.amount,
-        reason: cleanOptional(parsed.data.notes)
-          ? `${parsed.data.name} / ${parsed.data.notes}`
-          : parsed.data.name,
-        expenseId: expense.id,
-      });
+          expenseId:
+            expense.id,
+        });
     });
+
+    if (cashError) {
+      redirect(
+        `/expenses?error=${encodeURIComponent(
+          cashError,
+        )}`,
+      );
+    }
   } else {
     const availableMoney = await getPaymentMethodBalance(parsed.data.paymentMethod);
 

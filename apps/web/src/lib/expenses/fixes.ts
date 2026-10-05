@@ -2,7 +2,6 @@
 
 import {
   and,
-  desc,
   eq,
 } from 'drizzle-orm';
 import {
@@ -17,7 +16,6 @@ import {
 } from '@bloom-kigali/db/client';
 import {
   cashDrawerMovements,
-  cashDrawers,
   corrections,
   expenses,
 } from '@bloom-kigali/db/schema';
@@ -27,8 +25,8 @@ import {
   requireUser,
 } from '@/lib/auth/session';
 import {
-  getExpectedDrawerCash,
-} from '@/lib/cash-drawer/calculations';
+  getLockedCurrentDrawerState,
+} from '@/lib/cash-drawer/locking';
 import {
   getPaymentMethodBalance,
   paymentName,
@@ -645,24 +643,13 @@ async function applyExpenseFix(
         );
       }
 
-      const [openDrawer] =
-        await tx
-          .select()
-          .from(
-            cashDrawers,
-          )
-          .where(
-            eq(
-              cashDrawers.status,
-              'OPEN',
-            ),
-          )
-          .orderBy(
-            desc(
-              cashDrawers.openedAt,
-            ),
-          )
-          .limit(1);
+      const drawerState =
+        await getLockedCurrentDrawerState(
+          tx,
+        );
+
+      const openDrawer =
+        drawerState?.drawer;
 
       let belongsToOpenDrawer =
         false;
@@ -765,24 +752,8 @@ async function applyExpenseFix(
             cashDelta,
           ) >= 0.005
         ) {
-          const movements =
-            await tx
-              .select()
-              .from(
-                cashDrawerMovements,
-              )
-              .where(
-                eq(
-                  cashDrawerMovements.drawerId,
-                  openDrawer.id,
-                ),
-              );
-
           const expectedCash =
-            getExpectedDrawerCash(
-              openDrawer,
-              movements,
-            );
+            drawerState.expectedCash;
 
           if (
             cashDelta > 0 &&

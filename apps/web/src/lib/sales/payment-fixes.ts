@@ -2,7 +2,6 @@
 
 import {
   and,
-  desc,
   eq,
   sql,
 } from 'drizzle-orm';
@@ -19,7 +18,6 @@ import {
 
 import {
   cashDrawerMovements,
-  cashDrawers,
   corrections,
   salePayments,
   sales,
@@ -29,6 +27,10 @@ import {
   requireOwner,
   requireUser,
 } from '@/lib/auth/session';
+
+import {
+  getLockedCurrentDrawerState,
+} from '@/lib/cash-drawer/locking';
 
 
 type PaymentMethod =
@@ -944,24 +946,13 @@ async function applyPaymentFix(
             now,
         });
 
-      const [openDrawer] =
-        await tx
-          .select()
-          .from(
-            cashDrawers,
-          )
-          .where(
-            eq(
-              cashDrawers.status,
-              'OPEN',
-            ),
-          )
-          .orderBy(
-            desc(
-              cashDrawers.openedAt,
-            ),
-          )
-          .limit(1);
+      const drawerState =
+        await getLockedCurrentDrawerState(
+          tx,
+        );
+
+      const openDrawer =
+        drawerState?.drawer;
 
       if (
         openDrawer &&
@@ -980,6 +971,20 @@ async function applyPaymentFix(
               before,
             ),
           );
+
+        if (
+          cashDifference < 0 &&
+          Math.abs(
+            cashDifference,
+          ) >
+            drawerState.expectedCash
+        ) {
+          throw new PaymentFixError(
+            `Not enough drawer cash. Expected cash is RWF ${drawerState.expectedCash.toLocaleString(
+              'en-US',
+            )}.`,
+          );
+        }
 
         if (
           cashDifference !== 0

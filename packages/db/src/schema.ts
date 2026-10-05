@@ -1,7 +1,11 @@
-import { relations } from 'drizzle-orm';
+import {
+  relations,
+  sql,
+} from 'drizzle-orm';
 import {
   boolean,
   date,
+  index,
   integer,
   jsonb,
   numeric,
@@ -9,6 +13,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -522,28 +527,98 @@ export const corrections = pgTable('corrections', {
 });
 
 
-export const cashDrawers = pgTable('cash_drawers', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  openedByUserId: uuid('opened_by_user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'restrict' }),
-  closedByUserId: uuid('closed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
-  status: cashDrawerStatusEnum('status').notNull().default('OPEN'),
-  openingCash: numeric('opening_cash', { precision: 12, scale: 2 }).notNull().default('0'),
-  expectedCashAtClose: numeric('expected_cash_at_close', { precision: 12, scale: 2 })
-    .notNull()
-    .default('0'),
-  countedCash: numeric('counted_cash', { precision: 12, scale: 2 }).notNull().default('0'),
-  differenceAmount: numeric('difference_amount', { precision: 12, scale: 2 }).notNull().default('0'),
-  differenceType: cashDrawerDifferenceTypeEnum('difference_type').notNull().default('NONE'),
-  differenceReason: text('difference_reason'),
-  openingNote: text('opening_note'),
-  closingNote: text('closing_note'),
-  openedAt: timestamp('opened_at', { withTimezone: true }).defaultNow().notNull(),
-  closedAt: timestamp('closed_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const cashDrawers = pgTable(
+  'cash_drawers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+
+    openedByUserId: uuid('opened_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+
+    closedByUserId: uuid('closed_by_user_id').references(
+      () => users.id,
+      { onDelete: 'set null' },
+    ),
+
+    status: cashDrawerStatusEnum('status')
+      .notNull()
+      .default('OPEN'),
+
+    openingCash: numeric('opening_cash', {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default('0'),
+
+    expectedCashAtClose: numeric('expected_cash_at_close', {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default('0'),
+
+    countedCash: numeric('counted_cash', {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default('0'),
+
+    differenceAmount: numeric('difference_amount', {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default('0'),
+
+    differenceType: cashDrawerDifferenceTypeEnum(
+      'difference_type',
+    )
+      .notNull()
+      .default('NONE'),
+
+    differenceReason: text('difference_reason'),
+    openingNote: text('opening_note'),
+    closingNote: text('closing_note'),
+
+    openedAt: timestamp('opened_at', {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+
+    closedAt: timestamp('closed_at', {
+      withTimezone: true,
+    }),
+
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+
+    updatedAt: timestamp('updated_at', {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex(
+      'cash_drawers_single_open_idx',
+    )
+      .on(table.status)
+      .where(
+        sql`${table.status} = 'OPEN'`,
+      ),
+
+    index(
+      'cash_drawers_status_idx',
+    ).on(table.status),
+  ],
+);
 
 export const cashDrawerMovements = pgTable('cash_drawer_movements', {
   id: uuid('id').defaultRandom().primaryKey(),

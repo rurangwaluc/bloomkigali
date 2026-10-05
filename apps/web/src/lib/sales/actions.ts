@@ -2,7 +2,6 @@
 
 import {
   and,
-  desc,
   eq,
   inArray,
 } from 'drizzle-orm';
@@ -21,7 +20,6 @@ import {
 
 import {
   cashDrawerMovements,
-  cashDrawers,
   customers,
   products,
   saleItems,
@@ -36,6 +34,10 @@ import {
 import {
   requireUser,
 } from '@/lib/auth/session';
+
+import {
+  lockCurrentOpenDrawer,
+} from '@/lib/cash-drawer/locking';
 
 import {
   getProductLedgerTotals,
@@ -743,7 +745,11 @@ export async function createSaleAction(
         }
 
         let openDrawer:
-          | typeof cashDrawers.$inferSelect
+          | Awaited<
+              ReturnType<
+                typeof lockCurrentOpenDrawer
+              >
+            >
           | undefined;
 
         if (
@@ -755,26 +761,10 @@ export async function createSaleAction(
             extraKept > 0
           )
         ) {
-          const [drawer] =
-            await tx
-              .select()
-              .from(
-                cashDrawers,
-              )
-              .where(
-                eq(
-                  cashDrawers
-                    .status,
-                  'OPEN',
-                ),
-              )
-              .orderBy(
-                desc(
-                  cashDrawers
-                    .openedAt,
-                ),
-              )
-              .limit(1);
+          const drawer =
+            await lockCurrentOpenDrawer(
+              tx,
+            );
 
           if (!drawer) {
             throw new Error(

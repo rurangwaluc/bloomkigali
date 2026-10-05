@@ -1,17 +1,17 @@
 'use server';
 
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@bloom-kigali/db/client';
 import {
   cashDrawerMovements,
-  cashDrawers,
   debtPayments,
   salePayments,
   sales,
 } from '@bloom-kigali/db/schema';
 import { debtPaymentSchema } from '@bloom-kigali/validators/debt';
 import { requireUser } from '@/lib/auth/session';
+import { lockCurrentOpenDrawer } from '@/lib/cash-drawer/locking';
 
 export type DebtPaymentState = {
   error?: string;
@@ -125,28 +125,21 @@ export async function recordDebtPaymentAction(
       }
 
       let openDrawer:
-        | typeof cashDrawers.$inferSelect
+        | Awaited<
+            ReturnType<
+              typeof lockCurrentOpenDrawer
+            >
+          >
         | undefined;
 
       if (
         parsed.data.paymentMethod ===
         'CASH'
       ) {
-        const [drawer] = await tx
-          .select()
-          .from(cashDrawers)
-          .where(
-            eq(
-              cashDrawers.status,
-              'OPEN',
-            ),
-          )
-          .orderBy(
-            desc(
-              cashDrawers.openedAt,
-            ),
-          )
-          .limit(1);
+        const drawer =
+          await lockCurrentOpenDrawer(
+            tx,
+          );
 
         if (!drawer) {
           throw new Error(
