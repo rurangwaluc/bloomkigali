@@ -1,97 +1,104 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { db } from '@bloom-kigali/db/client';
-import { moneyAdditions, moneyTransfers } from '@bloom-kigali/db/schema';
-import { addMoneySchema, moneyTransferSchema } from '@bloom-kigali/validators/money';
-import { requireOwner } from '@/lib/auth/session';
-import { getPaymentMethodBalance } from './balance';
+import {
+  revalidatePath,
+} from 'next/cache';
+import {
+  redirect,
+} from 'next/navigation';
 
-function cleanOptional(value: string | undefined) {
-  const cleaned = value?.trim();
-  return cleaned ? cleaned : null;
-}
+import {
+  db,
+} from '@bloom-kigali/db/client';
+import {
+  moneyAdditions,
+} from '@bloom-kigali/db/schema';
+import {
+  externalMoneyAdditionSchema,
+} from '@bloom-kigali/validators/money';
 
-export async function addMoneyAction(formData: FormData) {
-  await requireOwner();
+import {
+  requireOwner,
+} from '@/lib/auth/session';
 
-  const parsed = addMoneySchema.safeParse({
-    paymentMethod: formData.get('paymentMethod'),
-    amount: formData.get('amount') || '0',
-    notes: formData.get('notes') || undefined,
-  });
+export async function addExternalMoneyAction(
+  formData: FormData,
+) {
+  const user =
+    await requireOwner();
 
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message || 'Check the add money form.';
-    redirect(`/money?error=${encodeURIComponent(message)}`);
-  }
+  const parsed =
+    externalMoneyAdditionSchema.safeParse(
+      {
+        paymentMethod:
+          formData.get(
+            'paymentMethod',
+          ),
 
-  const amount = Number(parsed.data.amount);
+        amount:
+          formData.get(
+            'amount',
+          ) || '0',
 
-  if (amount <= 0) {
-    redirect('/money?error=Amount must be above zero.');
-  }
-
-  await db.insert(moneyAdditions).values({
-    paymentMethod: parsed.data.paymentMethod,
-    amount: parsed.data.amount,
-    notes: cleanOptional(parsed.data.notes),
-  });
-
-  revalidatePath('/money');
-  revalidatePath('/dashboard');
-
-  redirect('/money?added=1');
-}
-
-export async function moveMoneyAction(formData: FormData) {
-  await requireOwner();
-
-  const parsed = moneyTransferSchema.safeParse({
-    fromPaymentMethod: formData.get('fromPaymentMethod'),
-    toPaymentMethod: formData.get('toPaymentMethod'),
-    amount: formData.get('amount') || '0',
-    notes: formData.get('notes') || undefined,
-  });
+        reason:
+          formData.get(
+            'reason',
+          ) || '',
+      },
+    );
 
   if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message || 'Check the money movement form.';
-    redirect(`/money?error=${encodeURIComponent(message)}`);
-  }
+    const message =
+      parsed.error.issues[0]
+        ?.message ||
+      'Check the external money form.';
 
-  if (parsed.data.fromPaymentMethod !== 'CASH') {
-    redirect('/money?error=Money can only be moved from cash.');
-  }
-
-  if (!['MOBILE_MONEY', 'BANK'].includes(parsed.data.toPaymentMethod)) {
-    redirect('/money?error=Move cash only to mobile money or bank.');
-  }
-
-  const amount = Number(parsed.data.amount);
-  const availableMoney = await getPaymentMethodBalance('CASH');
-
-  if (amount <= 0) {
-    redirect('/money?error=Amount must be above zero.');
-  }
-
-  if (amount > availableMoney) {
     redirect(
       `/money?error=${encodeURIComponent(
-        `Not enough cash. Cash has RWF ${availableMoney.toLocaleString('en-US')}.`,
+        message,
       )}`,
     );
   }
 
-  await db.insert(moneyTransfers).values({
-    fromPaymentMethod: 'CASH',
-    toPaymentMethod: parsed.data.toPaymentMethod,
-    amount: parsed.data.amount,
-    notes: cleanOptional(parsed.data.notes),
-  });
+  const amount =
+    Number(
+      parsed.data.amount,
+    );
 
-  revalidatePath('/money');
-  revalidatePath('/dashboard');
+  if (amount <= 0) {
+    redirect(
+      '/money?error=Amount must be above zero.',
+    );
+  }
 
-  redirect('/money?moved=1');
+  await db
+    .insert(
+      moneyAdditions,
+    )
+    .values({
+      addedByUserId:
+        user.id,
+
+      paymentMethod:
+        parsed.data
+          .paymentMethod,
+
+      amount:
+        parsed.data.amount,
+
+      notes:
+        parsed.data.reason,
+    });
+
+  revalidatePath(
+    '/money',
+  );
+
+  revalidatePath(
+    '/dashboard',
+  );
+
+  redirect(
+    '/money?externalAdded=1',
+  );
 }

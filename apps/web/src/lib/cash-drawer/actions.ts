@@ -319,6 +319,9 @@ export async function addDrawerCashAction(
             moneyAdditions,
           )
           .values({
+              addedByUserId:
+                user.id,
+
             paymentMethod:
               'CASH',
 

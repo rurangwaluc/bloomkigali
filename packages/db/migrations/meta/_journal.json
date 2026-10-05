@@ -211,6 +211,13 @@
       "when": 1791192054714,
       "tag": "0029_cultured_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791197171081,
+      "tag": "0030_curved_viper",
+      "breakpoints": true
     }
   ]
 }

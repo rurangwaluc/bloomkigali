@@ -27,10 +27,16 @@ import {
   getMoneyBalances,
 } from '@/lib/money/balance';
 
+import {
+  addExternalMoneyAction,
+} from '@/lib/money/actions';
+
 type MoneyPageProps = {
   searchParams?: Promise<{
     action?: string;
+    accountAction?: string;
     error?: string;
+    externalAdded?: string;
     drawerOpened?: string;
     drawerClosed?: string;
     cashAdded?: string;
@@ -132,6 +138,13 @@ function successMessage(
   >,
 ) {
   if (
+    params?.externalAdded ===
+    '1'
+  ) {
+    return 'External money added.';
+  }
+
+  if (
     params?.drawerOpened ===
     '1'
   ) {
@@ -195,6 +208,9 @@ export default async function MoneyPage({
 
   const selectedAction =
     params?.action || '';
+
+  const selectedAccountAction =
+    params?.accountAction || '';
 
   const error =
     params?.error || '';
@@ -312,18 +328,37 @@ export default async function MoneyPage({
 
       {isOwner ? (
         <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
-          <div className="border-b border-[var(--border)] px-5 py-5 sm:px-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
-              Money
-            </p>
+          <div className="flex flex-col gap-4 border-b border-[var(--border)] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--primary)]">
+                Money
+              </p>
 
-            <h2 className="mt-1 text-xl font-black tracking-tight text-[var(--text)]">
-              Account balances
-            </h2>
+              <h2 className="mt-1 text-xl font-black tracking-tight text-[var(--text)]">
+                Account balances
+              </h2>
 
-            <p className="mt-1 text-sm font-bold text-[var(--muted)]">
-              Business money by payment method.
-            </p>
+              <p className="mt-1 text-sm font-bold text-[var(--muted)]">
+                Business money by payment method.
+              </p>
+            </div>
+
+            {selectedAccountAction ===
+            'external' ? (
+              <Link
+                href="/money"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-[var(--border)] px-4 text-sm font-black text-[var(--text)]"
+              >
+                Cancel
+              </Link>
+            ) : (
+              <Link
+                href="/money?accountAction=external"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-4 text-sm font-black text-white transition hover:bg-[var(--primary-strong)]"
+              >
+                Add external money
+              </Link>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4">
@@ -361,6 +396,99 @@ export default async function MoneyPage({
             )}
           </div>
         </section>
+      ) : null}
+
+      {isOwner &&
+      selectedAccountAction ===
+        'external' ? (
+        <form
+          action={
+            addExternalMoneyAction
+          }
+          className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]"
+        >
+          <div className="border-b border-[var(--border)] px-5 py-4 sm:px-6">
+            <h3 className="text-lg font-black text-[var(--text)]">
+              Add external money
+            </h3>
+
+            <p className="mt-1 text-sm font-bold text-[var(--muted)]">
+              Record money added from outside Bloom Kigali. Cash must be added through the physical drawer.
+            </p>
+          </div>
+
+          <div className="grid gap-4 px-5 py-4 sm:grid-cols-3 sm:px-6">
+            <div>
+              <label
+                htmlFor="paymentMethod"
+                className="text-sm font-black text-[var(--text)]"
+              >
+                Account
+              </label>
+
+              <select
+                id="paymentMethod"
+                name="paymentMethod"
+                required
+                defaultValue="MOBILE_MONEY"
+                className={`${fieldClass} mt-2`}
+              >
+                <option value="MOBILE_MONEY">
+                  Mobile money
+                </option>
+
+                <option value="BANK">
+                  Bank
+                </option>
+
+                <option value="CARD">
+                  Card
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="externalAmount"
+                className="text-sm font-black text-[var(--text)]"
+              >
+                Amount
+              </label>
+
+              <input
+                id="externalAmount"
+                name="amount"
+                inputMode="decimal"
+                required
+                placeholder="Amount"
+                className={`${fieldClass} mt-2`}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="externalReason"
+                className="text-sm font-black text-[var(--text)]"
+              >
+                Reason
+              </label>
+
+              <input
+                id="externalReason"
+                name="reason"
+                required
+                placeholder="Why was this money added?"
+                className={`${fieldClass} mt-2`}
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--border)] px-5 py-3 sm:px-6">
+            <button className="inline-flex h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-5 text-sm font-black text-white transition hover:bg-[var(--primary-strong)]">
+              Add money
+            </button>
+          </div>
+        </form>
       ) : null}
 
       <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
