@@ -464,12 +464,39 @@ export const expenses = pgTable('expenses', {
 
 export const moneyTransfers = pgTable('money_transfers', {
   id: uuid('id').defaultRandom().primaryKey(),
-  fromPaymentMethod: paymentMethodEnum('from_payment_method').notNull(),
-  toPaymentMethod: paymentMethodEnum('to_payment_method').notNull(),
-  amount: numeric('amount', { precision: 12, scale: 2 }).notNull().default('0'),
+
+  movedByUserId: uuid('moved_by_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'restrict' }),
+
+  fromPaymentMethod: paymentMethodEnum(
+    'from_payment_method',
+  ).notNull(),
+
+  toPaymentMethod: paymentMethodEnum(
+    'to_payment_method',
+  ).notNull(),
+
+  amount: numeric('amount', {
+    precision: 12,
+    scale: 2,
+  })
+    .notNull()
+    .default('0'),
+
   notes: text('notes'),
-  movedAt: timestamp('moved_at', { withTimezone: true }).defaultNow().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+
+  movedAt: timestamp('moved_at', {
+    withTimezone: true,
+  })
+    .defaultNow()
+    .notNull(),
+
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
+  })
+    .defaultNow()
+    .notNull(),
 });
 
 export const moneyAdditions = pgTable('money_additions', {
@@ -672,6 +699,8 @@ export const usersRelations = relations(users, ({ many }) => ({
 
   moneyAdditions: many(moneyAdditions),
 
+  moneyTransfers: many(moneyTransfers),
+
   requestedCorrections: many(corrections, {
     relationName: 'correction_requested_by',
   }),
@@ -776,6 +805,20 @@ export const stockDamagesRelations = relations(
     recordedBy: one(users, {
       fields: [stockDamages.recordedByUserId],
       references: [users.id],
+    }),
+  }),
+);
+
+export const moneyTransfersRelations = relations(
+  moneyTransfers,
+  ({ one }) => ({
+    movedBy: one(users, {
+      fields: [
+        moneyTransfers.movedByUserId,
+      ],
+      references: [
+        users.id,
+      ],
     }),
   }),
 );

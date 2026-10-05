@@ -25,6 +25,7 @@ import {
 
 import {
   getMoneyBalances,
+  paymentName,
 } from '@/lib/money/balance';
 
 import {
@@ -222,6 +223,8 @@ export default async function MoneyPage({
     currentDrawer,
     lastClosedDrawer,
     accountBalances,
+    moneyAdditionHistory,
+    moneyTransferHistory,
   ] = await Promise.all([
     db.query.cashDrawers.findFirst(
       {
@@ -254,7 +257,127 @@ export default async function MoneyPage({
     isOwner
       ? getMoneyBalances()
       : Promise.resolve([]),
+
+    isOwner
+      ? db.query.moneyAdditions.findMany({
+          with: {
+            addedBy: true,
+          },
+          orderBy: (
+            moneyAdditions,
+            { desc },
+          ) => [
+            desc(
+              moneyAdditions.addedAt,
+            ),
+          ],
+          limit: 25,
+        })
+      : Promise.resolve([]),
+
+    isOwner
+      ? db.query.moneyTransfers.findMany({
+          with: {
+            movedBy: true,
+          },
+          orderBy: (
+            moneyTransfers,
+            { desc },
+          ) => [
+            desc(
+              moneyTransfers.movedAt,
+            ),
+          ],
+          limit: 25,
+        })
+      : Promise.resolve([]),
   ]);
+
+  const moneyHistory =
+    isOwner
+      ? [
+          ...moneyAdditionHistory.map(
+            (addition) => ({
+              id:
+                `addition-${addition.id}`,
+
+              kind:
+                addition.paymentMethod ===
+                'CASH'
+                  ? 'Cash added'
+                  : 'External money added',
+
+              route:
+                addition.paymentMethod ===
+                'CASH'
+                  ? paymentName(
+                      addition.paymentMethod,
+                    )
+                  : `External → ${paymentName(
+                      addition.paymentMethod,
+                    )}`,
+
+              amount:
+                Number(
+                  addition.amount,
+                ),
+
+              direction: 'IN' as const,
+
+              reason:
+                addition.notes ||
+                'No reason',
+
+              actor:
+                addition.addedBy.name,
+
+              happenedAt:
+                addition.addedAt,
+            }),
+          ),
+
+          ...moneyTransferHistory.map(
+            (transfer) => ({
+              id:
+                `transfer-${transfer.id}`,
+
+              kind:
+                'Money transferred',
+
+              route:
+                `${paymentName(
+                  transfer.fromPaymentMethod,
+                )} → ${paymentName(
+                  transfer.toPaymentMethod,
+                )}`,
+
+              amount:
+                Number(
+                  transfer.amount,
+                ),
+
+              direction:
+                'TRANSFER' as const,
+
+              reason:
+                transfer.notes ||
+                'No reason',
+
+              actor:
+                transfer.movedBy.name,
+
+              happenedAt:
+                transfer.movedAt,
+            }),
+          ),
+        ]
+          .sort(
+            (a, b) =>
+              b.happenedAt.getTime() -
+              a.happenedAt.getTime(),
+          )
+          .slice(0, 25)
+      : [];
 
   const movements =
     currentDrawer
@@ -489,6 +612,88 @@ export default async function MoneyPage({
             </button>
           </div>
         </form>
+      ) : null}
+
+      {isOwner ? (
+        <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+          <div className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 sm:px-6">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--primary)]">
+                Money
+              </p>
+
+              <h3 className="mt-1 text-lg font-black text-[var(--text)]">
+                Money history
+              </h3>
+
+              <p className="mt-1 text-sm font-bold text-[var(--muted)]">
+                Owner additions and account transfers.
+              </p>
+            </div>
+
+            <p className="shrink-0 text-xs font-black text-[var(--muted)]">
+              {moneyHistory.length}{' '}
+              record
+              {moneyHistory.length === 1
+                ? ''
+                : 's'}
+            </p>
+          </div>
+
+          {moneyHistory.length === 0 ? (
+            <p className="px-5 py-5 text-sm font-bold text-[var(--muted)] sm:px-6">
+              No money activity yet.
+            </p>
+          ) : (
+            <div className="divide-y divide-[var(--border)]">
+              {moneyHistory.map(
+                (entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-start justify-between gap-4 px-5 py-3 sm:px-6"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-[var(--text)]">
+                        {entry.kind}
+                      </p>
+
+                      <p className="mt-0.5 text-xs font-black text-[var(--text)]">
+                        {entry.route}
+                      </p>
+
+                      <p className="mt-1 text-xs font-bold leading-5 text-[var(--muted)]">
+                        {entry.reason}
+                        {' / '}
+                        {entry.actor}
+                        {' / '}
+                        {dateTime(
+                          entry.happenedAt,
+                        )}
+                      </p>
+                    </div>
+
+                    <p
+                      className={
+                        entry.direction ===
+                        'IN'
+                          ? 'shrink-0 text-sm font-black tabular-nums text-[var(--success)]'
+                          : 'shrink-0 text-sm font-black tabular-nums text-[var(--text)]'
+                      }
+                    >
+                      {entry.direction ===
+                      'IN'
+                        ? '+'
+                        : ''}
+                      {money(
+                        entry.amount,
+                      )}
+                    </p>
+                  </div>
+                ),
+              )}
+            </div>
+          )}
+        </section>
       ) : null}
 
       <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">

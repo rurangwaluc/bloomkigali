@@ -567,6 +567,10 @@ export async function depositDrawerCashAction(
               moneyTransfers,
             )
             .values({
+              movedByUserId:
+                user.id,
+
+
               fromPaymentMethod:
                 'CASH',
 
