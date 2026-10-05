@@ -35,7 +35,11 @@ import {
   sales,
 } from '@bloom-kigali/db/schema';
 import { requireUser } from '@/lib/auth/session';
-import { getExpectedDrawerCash } from '@/lib/cash-drawer/calculations';
+import {
+  getDrawerCashIn,
+  getDrawerCashOut,
+  getExpectedDrawerCash,
+} from '@/lib/cash-drawer/calculations';
 
 const KIGALI_TIME_ZONE =
   'Africa/Kigali';
@@ -522,6 +526,20 @@ export default async function DashboardPage() {
       0,
     );
 
+  const drawerCashIn =
+    currentDrawer
+      ? getDrawerCashIn(
+          currentMovements,
+        )
+      : 0;
+
+  const drawerCashOut =
+    currentDrawer
+      ? getDrawerCashOut(
+          currentMovements,
+        )
+      : 0;
+
   const expectedCash =
     currentDrawer
       ? getExpectedDrawerCash(
@@ -966,24 +984,24 @@ export default async function DashboardPage() {
 
               <div className="flex justify-between gap-4 py-2.5 text-sm">
                 <span className="font-semibold text-[var(--muted)]">
-                  Received today
+                  Cash in
                 </span>
 
-                <strong className="text-[var(--text)]">
+                <strong className="text-[var(--success)]">
                   {money(
-                    todayMoneyReceived,
+                    drawerCashIn,
                   )}
                 </strong>
               </div>
 
               <div className="flex justify-between gap-4 py-2.5 text-sm">
                 <span className="font-semibold text-[var(--muted)]">
-                  Expenses
+                  Cash out
                 </span>
 
-                <strong className="text-[var(--text)]">
+                <strong className="text-[var(--danger)]">
                   {money(
-                    todayExpensesTotal,
+                    drawerCashOut,
                   )}
                 </strong>
               </div>
@@ -1101,7 +1119,104 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
+          {recentSales.length > 0 ? (
+            <div className="divide-y divide-[var(--border)] md:hidden">
+              {recentSales.map(
+                (sale) => {
+                  const status =
+                    saleStatus(
+                      sale,
+                    );
+
+                  const names =
+                    itemNamesBySale.get(
+                      sale.id,
+                    ) || [];
+
+                  const itemText =
+                    names.length <= 2
+                      ? names.join(
+                          ', ',
+                        )
+                      : `${names
+                          .slice(
+                            0,
+                            2,
+                          )
+                          .join(
+                            ', ',
+                          )} +${
+                          names.length -
+                          2
+                        }`;
+
+                  return (
+                    <Link
+                      key={
+                        sale.id
+                      }
+                      href={`/sales/${sale.id}`}
+                      className="block px-4 py-4 transition hover:bg-[var(--surface)]"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-[var(--text)]">
+                            {sale.customerName ||
+                              'Walk-in'}
+                          </p>
+
+                          <p className="mt-1 truncate text-xs font-semibold text-[var(--muted)]">
+                            {itemText ||
+                              'Sale items'}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <p className="whitespace-nowrap text-sm font-black text-[var(--text)]">
+                            {money(
+                              sale.totalAmount,
+                            )}
+                          </p>
+
+                          <p
+                            className={`mt-1 text-xs font-black ${status.className}`}
+                          >
+                            {
+                              status.text
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-4 text-[11px] font-semibold text-[var(--muted)]">
+                        <span>
+                          #
+                          {sale.id
+                            .slice(
+                              0,
+                              6,
+                            )
+                            .toUpperCase()}
+                        </span>
+
+                        <span>
+                          {timeLabel(
+                            sale.saleDate,
+                          )}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                },
+              )}
+            </div>
+          ) : (
+            <div className="px-4 py-7 text-sm font-semibold text-[var(--muted)] md:hidden">
+              No sales recorded today.
+            </div>
+          )}
+
+          <div className="hidden overflow-x-auto md:block">
             <div className="min-w-[620px]">
               <div className="grid grid-cols-[0.55fr_1.12fr_1.35fr_0.95fr_0.72fr_0.62fr] gap-3 bg-[var(--surface)] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--muted)] sm:px-5">
                 <span>Sale</span>
